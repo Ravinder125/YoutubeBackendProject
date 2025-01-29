@@ -10,7 +10,7 @@ const asyncHandler = (requestHandler) => {
 
 
 
-export {asyncHandler}
+export { asyncHandler }
 
 // tryCatch
 // const asyncHandler = (fn) => async (req, res, next) => {
