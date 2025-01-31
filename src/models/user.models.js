@@ -1,4 +1,5 @@
 import mongoose, { Schema } from "mongoose";
+import apiError from "../utils/apiError"
 import bcrypt from "bcrypt";
 
 import jwt from "jsonwebtoken";
@@ -27,7 +28,7 @@ const userSchema = new Schema({
         required: [true, "Password is required"],
         trim: true,
         minlength: [8, "Password must at least 8 characters long"],
-        maxlength: [30, "Password cannot exceed 20 characters"],
+        maxlength: [30, "Password cannot exceed 30 characters"],
         select: false, // Preventing password from being returned in queries by default
     },
     fullName: {
@@ -46,7 +47,7 @@ const userSchema = new Schema({
     refreshToken: {
         type: String,
         trim: true,
-        required: true
+        // required: true
     },
 
     // Relationships
@@ -65,7 +66,7 @@ const userSchema = new Schema({
 
     // playlist Management
     ownedPlaylists: [{ type: Schema.Types.ObjectId, ref: 'Playlist', default: [] }],
-    savedplaylists: [{ type: Schema.Types.ObjectId, ref: "Playlist", default: [] }],
+    savedPlaylists: [{ type: Schema.Types.ObjectId, ref: "Playlist", default: [] }],
     watchLater: [{ type: Schema.Types.ObjectId, ref: 'Video', default: [] }],
     likedVideos: [{ type: Schema.Types.ObjectId, ref: 'Video', default: [] }],
 
@@ -80,7 +81,7 @@ const userSchema = new Schema({
 userSchema.pre("save", async function (next) {
     // if user's Password is not modified then exit(next()) the middelware otherwise hash it 
     if (!this.isModified("password")) return next()
-    this.password = bcrypt.hash(this.password, 10)
+    this.password = await bcrypt.hash(this.password, 10)
     next()
 })
 
@@ -89,9 +90,20 @@ userSchema.methods.isPasswordCorrect = async function (password) {
     return await bcrypt.compare(password, this.password);
 }
 
+const validateEnv = () => {
+    if (!process.env.ACCESS_TOKEN_SECRET ||
+        !process.env.ACCESS_TOKEN_EXPIRY ||
+        !process.env.REFRESH_TOKEN_SECRET ||
+        !process.env.REFRESH_TOKEN_EXPIRY
+    ) return new apiError('enviornment variables are missing ')
+}
+
 // Generating access token through our custom hook of mongoose
 userSchema.methods.generateAccessToken = function () {
     // Always wrap JWT operations in try/catch to handle potential errors
+
+    validateEnv()
+
     try {
         return jwt.sign(
             {
@@ -107,25 +119,25 @@ userSchema.methods.generateAccessToken = function () {
         );
     } catch (error) {
         // Handle errors gracefully (e.g., missing secret, invalid options)
-        console.error("Access token generation failed:", error);
-        //   throw new Error("Failed to generate access token");
+        throw new apiError("Failed to generate access token");
     }
 };
 
 // Generating access token through our custom hook of mongoose
-userSchema.methods.generatingRefreshToken = function () {
+userSchema.methods.generateRefreshToken = function () {
+    validateEnv()
     try {
-        jwt.sign(
+        return jwt.sign(
             {
                 _id: this._id
             },
             process.env.REFRESH_TOKEN_SECRET,
             {
-                expiresIn: process.env.REFRESH_TOKEN_SECRET
+                expiresIn: process.env.REFRESH_TOKEN_EXPIRY
             }
         )
     } catch (error) {
-        console.log(`Refresh token generation failed: ${error}`)
+        throw new apiError('Refresh token generation failed', error)
     }
 }
 
