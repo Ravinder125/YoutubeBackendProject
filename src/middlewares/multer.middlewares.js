@@ -1,5 +1,6 @@
 import multer from "multer";
 
+// We are going to upload fle in diskStorage
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         // To where the file to be stored
