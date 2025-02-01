@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import apiError from "../utils/apiError"
+import { apiError } from "../utils/apiError.js"
 import bcrypt from "bcrypt";
 
 import jwt from "jsonwebtoken";
@@ -142,4 +142,4 @@ userSchema.methods.generateRefreshToken = function () {
 }
 
 const User = mongoose.model('User', userSchema);
-export default User;
+export { User };
