@@ -5,7 +5,7 @@ import uploadOnCloudinary from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiResponse.js";
 
 
-const registerUser = asyncHandler(async () => {
+const registerUser = asyncHandler(async (req, res, next) => {
     // logic algorithm:
     // get user details from frontend 
     // validation - not empy 
@@ -19,41 +19,52 @@ const registerUser = asyncHandler(async () => {
     // retrun res
 
 
+    // fetching details of user from user
+    console.log("Body:", req.body, "File", req.file)
     const { fullName, email, username, password } = req.body;
 
     console.log("Fullname:", fullName, "Email:", email)
 
+    // Checking if user details data containers are empty or not
     if (
         [fullName, email, username, password].some((field) => field?.trim === "")
     ) {
-        throw new apiError(400, "All fields are  required")
+        throw new apiError(400, "All fields are required")
     }
 
     // Checks if user already exist or not
-    const existingUser = User.findOne({
+    const existingUser = await User.findOne({
         $or: [{ username }, { email }]
     })
+    // console.log(existingUser)
 
     if (existingUser) {
         throw new apiError(409, "User with email or username already exist")
     }
 
-    console.log(req.files)
-    console.log(req.body)
-    // As mutler attach file in request 
+    // console.log(req.files)
+    // console.log(req.body)
+    // As mutler attachs file in request 
+    // fetching file paths from files object
+    console.log(req.file)
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImagePath = req.files?.coverImage[0]?.path;
+    // const coverImagePath = req.files?.coverImage[0]?.path;
 
+    // Checks if avatar path is empty
     if (!avatarLocalPath) {
         throw new apiError(400, "Avatar file is required")
     }
+
+    // Uploading files to Cloudinary
     const avatar = await uploadOnCloudinary(avatarLocalPath);
     const coverImage = await uploadOnCloudinary(coverImagePath);
+    console.log("avatar:", avatar, "coverImage", coverImage)
 
     if (!avatar) {
-        throw new apiError(500, "Avatar file is required")
+        throw new apiError(402, "Avatar file is required")
     }
 
+    // Creating user after all passess and stroing into user variable
     const user = await User.create({
         fullName,
         avatar: avatar.url,
@@ -64,17 +75,21 @@ const registerUser = asyncHandler(async () => {
 
     })
 
+    // Fetching last created user details except Password and refresh token
     const createdUser = await User.findById(user._id).select(
         "-password -refreshToken"
     )
 
-    if (!createdUser) {
-        throw new apiError(500, "Error while registering the user")
-    }
+    // Checking if user successfully created or not
+    // if (!createdUser) {
+    //     throw new apiError(500, "Error while registering the user")
+    // }
 
+    // Sending response to frontend that user is successfully created
     return res.status(201).json(
-        new apiResponse(200, createdUser, "User is registered successfully")
+        new apiResponse(200, createdUser.username, "User is registered successfully")
     )
+
 })
 
 

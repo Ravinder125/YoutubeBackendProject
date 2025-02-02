@@ -21,7 +21,7 @@ const userSchema = new Schema({
         required: [true, "Email is required"],
         unique: true,
         trim: true,
-        match: [/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, "Please enter a valid email address"]
+        // match: [/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, "Please enter a valid email address"]
     },
     password: {
         type: String,
@@ -35,7 +35,7 @@ const userSchema = new Schema({
         type: String,
         trim: true,
         required: true,
-        index: true,
+        // index: true,
     },
     avatar: {
         type: String, // cloudinary url
