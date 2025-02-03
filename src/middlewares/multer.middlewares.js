@@ -9,8 +9,8 @@ const storage = multer.diskStorage({
     filename: function (req, file, cb) {
         // What name to be set to the file
         console.log("file:", file)
-        // newFile = await `${file.fieldname}-${Date.now()}-${file.originalname}`.toUpperCase().replace(' ', '-')
-        cb(null, file.originalname)
+        // newFile = await`${file.fieldname}-${Date.now()}-${file.originalname}`.toUpperCase().replace(' ', '-')
+        cb(null, file.fieldname)
     }
 })
 

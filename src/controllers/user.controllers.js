@@ -3,10 +3,11 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.models.js"
 import uploadOnCloudinary from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiResponse.js";
+import fs from "fs"
 
 
 const registerUser = asyncHandler(async (req, res, next) => {
-    // logic algorithm:
+    // logic algorithm of fetching data from user, createing a new user and uploading files on cloudinary :-
     // get user details from frontend 
     // validation - not empy 
     // check if user already exists : by email and username
@@ -19,19 +20,40 @@ const registerUser = asyncHandler(async (req, res, next) => {
     // retrun res
 
 
-    // fetching details of user from user
-    console.log("Body:", req.body, "File", req.file)
-    const { fullName, email, username, password } = req.body;
+    // Get details from the User
+    // console.log("Body:", req.body, "Files", req.files)
+    if (req.body.length <= 0) {
+        throw new apiError(400, "body is empty");
+    }
+    const { fullName, email, username, password } = req.body
 
-    console.log("Fullname:", fullName, "Email:", email)
+    // console.log("Fullname:", fullName, "Email:", email)
 
-    // Checking if user details data containers are empty or not
+    // Checks if user details containers are empty or not
     if (
-        [fullName, email, username, password].some((field) => field?.trim === "")
+        [fullName, email, username, password].some((field) =>
+            field?.trim() === "" || false
+        )
     ) {
         throw new apiError(400, "All fields are required")
     }
 
+
+    // Get images file paths from req.files ( imp- req.file will be used for single file upload)
+    // const coverImagePath = req.files?.coverImage[0]?.path;
+    // A classic way to do just like above
+    let coverImagePath
+    if (req.files && Array.isArray(req.files.coverImage)
+        && req.files.coverImage.length > 0) {
+        return coverImagePath = req.files.coverImage[0].path
+    }
+    let avatarLocalPath;
+    try {
+        avatarLocalPath = req.files?.avatar[0]?.path;
+    } catch (error) {
+        throw new apiError(400, "Avatar file is required")
+
+    }
     // Checks if user already exist or not
     const existingUser = await User.findOne({
         $or: [{ username }, { email }]
@@ -39,29 +61,23 @@ const registerUser = asyncHandler(async (req, res, next) => {
     // console.log(existingUser)
 
     if (existingUser) {
+        // If user exist then delete files from local and throw throw error
+        const clearExistUserFiles = (async () => {
+            await fs.unlinkSync(avatarLocalPath);
+            if (coverImagePath) await fs.unlinkSync(coverImagePath)
+            console.log("Uploaded files by Existing user have been removed from the system ")
+        })()
         throw new apiError(409, "User with email or username already exist")
     }
 
-    // console.log(req.files)
-    // console.log(req.body)
-    // As mutler attachs file in request 
-    // fetching file paths from files object
-    console.log(req.file)
-    const avatarLocalPath = req.files?.avatar[0]?.path;
-    // const coverImagePath = req.files?.coverImage[0]?.path;
-
-    // Checks if avatar path is empty
-    if (!avatarLocalPath) {
-        throw new apiError(400, "Avatar file is required")
-    }
 
     // Uploading files to Cloudinary
     const avatar = await uploadOnCloudinary(avatarLocalPath);
-    const coverImage = await uploadOnCloudinary(coverImagePath);
+    const coverImage = await uploadOnCloudinary(coverImagePath)
     console.log("avatar:", avatar, "coverImage", coverImage)
 
     if (!avatar) {
-        throw new apiError(402, "Avatar file is required")
+        throw new apiError(402, "Avatar file from cloudinary is empty ")
     }
 
     // Creating user after all passess and stroing into user variable
@@ -75,19 +91,19 @@ const registerUser = asyncHandler(async (req, res, next) => {
 
     })
 
-    // Fetching last created user details except Password and refresh token
+    // Get last created user details without Password and refresh token
     const createdUser = await User.findById(user._id).select(
         "-password -refreshToken"
     )
 
-    // Checking if user successfully created or not
-    // if (!createdUser) {
-    //     throw new apiError(500, "Error while registering the user")
-    // }
+    // Checks if user successfully created or not
+    if (!createdUser) {
+        throw new apiError(500, "Error while registering the user")
+    }
 
     // Sending response to frontend that user is successfully created
     return res.status(201).json(
-        new apiResponse(200, createdUser.username, "User is registered successfully")
+        new apiResponse(200, createdUser, "User is registered successfully")
     )
 
 })
@@ -127,7 +143,7 @@ const registerUser = asyncHandler(async (req, res, next) => {
 
 //         }
 //     } catch (error) {
-//         res.status(500).json({ message: 'Internal server is error', error: error.message })
+//         res.status(500).json({ message: 'Internal server error', error: error.message })
 //         console.log("Error while login the User:", error.message)
 //     }
 // })

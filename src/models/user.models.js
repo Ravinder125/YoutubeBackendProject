@@ -95,7 +95,7 @@ const validateEnv = () => {
         !process.env.ACCESS_TOKEN_EXPIRY ||
         !process.env.REFRESH_TOKEN_SECRET ||
         !process.env.REFRESH_TOKEN_EXPIRY
-    ) return new apiError('enviornment variables are missing ')
+    ) throw new apiError('enviornment variables are missing ')
 }
 
 // Generating access token through our custom hook of mongoose
