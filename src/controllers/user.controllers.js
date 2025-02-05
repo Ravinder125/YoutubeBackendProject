@@ -1,12 +1,33 @@
-import { apiError } from "../utils/apiError.js"
+import { apiError } from "../utils/apiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { User } from "../models/user.models.js"
+import { User } from "../models/user.models.js";
 import uploadOnCloudinary from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiResponse.js";
-import fs from "fs"
+import { cleanUpFiles } from "../utils/cleanUpFiles.js";
+
+const generateRefreshAndAccessToken = async (userId) => {
+    try {
+        // Get user by user id
+        const user = await User.findById(userId);
+
+        // generate token by calling custom methods
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+
+        // save refreshToken and save all the progress
+        user.refreshToken = refreshToken;
+        user.save({ validateBeforeSave: false });
+
+        // return tokens for further procceed
+        return { accessToken, refreshToken }
+
+    } catch (error) {
+        throw new apiError(500, 'Error while generating refresh tand access tokens')
+    }
+}
 
 
-const registerUser = asyncHandler(async (req, res, next) => {
+const registerUser = asyncHandler(async (req, res) => {
     // logic algorithm of fetching data from user, createing a new user and uploading files on cloudinary :-
     // get user details from frontend 
     // validation - not empy 
@@ -19,136 +40,141 @@ const registerUser = asyncHandler(async (req, res, next) => {
     // check for user creation
     // retrun res
 
+    console.log("Request Body:", req.body, "Files:", req.files);
 
-    // Get details from the User
-    // console.log("Body:", req.body, "Files", req.files)
-    if (req.body.length <= 0) {
-        throw new apiError(400, "body is empty");
-    }
-    const { fullName, email, username, password } = req.body
-
-    // console.log("Fullname:", fullName, "Email:", email)
-
-    // Checks if user details containers are empty or not
-    if (
-        [fullName, email, username, password].some((field) =>
-            field?.trim() === "" || false
-        )
-    ) {
-        throw new apiError(400, "All fields are required")
+    // Validate request body
+    if (!req.body || Object.keys(req.body).length === 0) {
+        throw new apiError(400, "Request body is empty");
     }
 
+    const { fullName, email, username, password } = req.body;
 
-    // Get images file paths from req.files ( imp- req.file will be used for single file upload)
-    // const coverImagePath = req.files?.coverImage[0]?.path;
-    // A classic way to do just like above
-    let coverImagePath
-    if (req.files && Array.isArray(req.files.coverImage)
-        && req.files.coverImage.length > 0) {
-        return coverImagePath = req.files.coverImage[0].path
+    // Validate required fields
+    if (![fullName, email, username, password].every(field => field?.trim())) {
+        throw new apiError(400, "All fields are required");
     }
-    let avatarLocalPath;
-    try {
-        avatarLocalPath = req.files?.avatar[0]?.path;
-    } catch (error) {
-        throw new apiError(400, "Avatar file is required")
 
+    // Validate file uploads
+    const avatarLocalPath = req.files?.avatar?.[0]?.path;
+    if (!avatarLocalPath) {
+        throw new apiError(400, "Avatar file is required");
     }
-    // Checks if user already exist or not
-    const existingUser = await User.findOne({
-        $or: [{ username }, { email }]
-    })
-    // console.log(existingUser)
 
+    const coverImagePath = req.files?.coverImage?.[0]?.path || null;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ $or: [{ username }, { email }] });
     if (existingUser) {
-        // If user exist then delete files from local and throw throw error
-        const clearExistUserFiles = (async () => {
-            await fs.unlinkSync(avatarLocalPath);
-            if (coverImagePath) await fs.unlinkSync(coverImagePath)
-            console.log("Uploaded files by Existing user have been removed from the system ")
-        })()
-        throw new apiError(409, "User with email or username already exist")
+        await cleanUpFiles([avatarLocalPath, coverImagePath]);
+        throw new apiError(409, "User with email or username already exists");
     }
 
-
-    // Uploading files to Cloudinary
+    // Upload files to Cloudinary
     const avatar = await uploadOnCloudinary(avatarLocalPath);
-    const coverImage = await uploadOnCloudinary(coverImagePath)
-    console.log("avatar:", avatar, "coverImage", coverImage)
-
-    if (!avatar) {
-        throw new apiError(402, "Avatar file from cloudinary is empty ")
+    const coverImage = coverImagePath ? await uploadOnCloudinary(coverImagePath) : null;
+    if (!avatar?.url) {
+        await cleanUpFiles([avatarLocalPath, coverImagePath]);
+        throw new apiError(500, "Failed to upload avatar to Cloudinary");
     }
+    await cleanUpFiles([avatarLocalPath, coverImagePath]);
 
-    // Creating user after all passess and stroing into user variable
+
+    // Create user in the database
     const user = await User.create({
         fullName,
-        avatar: avatar.url,
         email,
-        coverImage: coverImage?.url || "",
         username,
-        password
+        password,
+        avatar: avatar.url,
+        coverImage: coverImage?.url || ""
+    });
 
-    })
-
-    // Get last created user details without Password and refresh token
-    const createdUser = await User.findById(user._id).select(
-        "-password -refreshToken"
-    )
-
-    // Checks if user successfully created or not
+    // Fetch the created user without password and refresh token
+    const createdUser = await User.findById(user._id).select("-password -refreshToken");
     if (!createdUser) {
-        throw new apiError(500, "Error while registering the user")
+        throw new apiError(500, "Error while registering the user");
     }
 
-    // Sending response to frontend that user is successfully created
-    return res.status(201).json(
-        new apiResponse(200, createdUser, "User is registered successfully")
+    // Respond with success
+    return res.status(201).json(new apiResponse(201, createdUser, "User registered successfully"));
+});
+
+const loginUser = asyncHandler(async (req, res) => {
+    // Login logic algorithm
+    // fist extract user info from user (req.body)
+    // then check if the body is empty?
+    // then check if user exist or not if exist then create his new access token by email or username
+    // then send respond "You are logined"
+
+    // by Hitesh Chaudhary sir ji
+    // req body -> data
+    // username or email -> find the user
+    // password check
+    // access and refresh token generate
+    // send them in cooki
+
+    const { email, username, password } = req.body;
+
+    // Checks if body is empty
+    if (!email || !username && !password) {
+        throw new apiError(400, "username or email is required");
+    }
+    // if (!password) {
+    //     throw new apiError(400, "Password is required")
+    // }
+
+    // checks if user exist or not 
+    const user = await User.findOne({
+        $or: [{ username }, { password }]
+    }
     )
+
+    if (!user) {
+        throw new apiError(404, "User doesn't exists")
+    }
+
+    // Checks password
+    // IMPORTANT:// You can't find your created methods in "User" object because it's related to mongoose but it doesn't contains your methods.
+    // then who contains the methods, the answer this "user" variable right now
+    const IsPasswordValid = user.isPasswordCorrect(password);
+
+    if (!IsPasswordValid) {
+        throw new apiError(401, "Invalid user credentials")
+    }
+
+    const { accessToken, refreshToken } = await generateRefreshAndAccessToken(user._id)
+
+    // for now the user variable which contains user model but it's refresh token is empty because user model is updated but not the variable
+    // As we are gonna send user it's details but the password and refresh token
+    const loggedInUser = User.findById(user._id).select("-password -refresh")
+
+    // we have to set options for cokiee because cokiee can be modified by frontend side so it's for security.
+    const options = {
+        httpOnly: true,
+        secure: true
+        // now cokiee are now modifiable by server but can be seen
+    }
+
+    // so that's how tokens in cookie format in user browser
+    return res
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(
+            new apiResponse(
+                200,
+                {
+                    userInfo: loggedInUser, accessToken, refreshToken
+                },
+                "User logged in Successfully"
+            )
+        )
+
 
 })
 
+const logoutUser = asyncHandler((req, res) => {
 
-
-
-
-// Just Practice bro
-// We have created register controller here to register user now use it in user router
-// const registerUser = asyncHandler(async (req, res, next) => {
-//     try {
-//         console.log(req.body)
-//         const { username, password } = req.body;
-
-//         if (!username || !password) return res.status(401).json({ message: "username and password is required" })
-//         console.log(username, password)
-
-//         res.status(2001).json({ message: "User registered successfully" })
-
-//     } catch (error) {
-//         res.status(401).json({ message: "data not found" }, error.message)
-//         console.log("Error while registering the User", error)
-//     }
-
-// })
-
-// const loginUser = asyncHandler(async (req, res, next) => {
-//     try {
-//         const { username, password } = req.body;
-
-//         // if username and password are empy then response with the message of "Invalid Credentials"
-//         if (!username || !password) return res.status('402').json({ message: "username and password is required" })
-
-//         if (username === "Ravinder" && password === "Ravinder123") {
-//             res.status(200).json({ message: "User logged in successfully" })
-
-//         }
-//     } catch (error) {
-//         res.status(500).json({ message: 'Internal server error', error: error.message })
-//         console.log("Error while login the User:", error.message)
-//     }
-// })
-
-
-
+})
 
 export { registerUser };
