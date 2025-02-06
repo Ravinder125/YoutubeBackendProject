@@ -113,21 +113,24 @@ const loginUser = asyncHandler(async (req, res) => {
     // access and refresh token generate
     // send them in cooki
 
+    console.log(req.body)
     const { email, username, password } = req.body;
+    console.log(email, password)
 
     // Checks if body is empty
-    if (!email || !username && !password) {
+    if (!(email || username)) {
         throw new apiError(400, "username or email is required");
     }
-    // if (!password) {
-    //     throw new apiError(400, "Password is required")
-    // }
+    if (!password) {
+        throw new apiError(400, "Password is required")
+    }
 
     // checks if user exist or not 
     const user = await User.findOne({
-        $or: [{ username }, { password }]
+        $or: [{ username }, { email }]
     }
     )
+
 
     if (!user) {
         throw new apiError(404, "User doesn't exists")
@@ -136,7 +139,7 @@ const loginUser = asyncHandler(async (req, res) => {
     // Checks password
     // IMPORTANT:// You can't find your created methods in "User" object because it's related to mongoose but it doesn't contains your methods.
     // then who contains the methods, the answer this "user" variable right now
-    const IsPasswordValid = user.isPasswordCorrect(password);
+    const IsPasswordValid = await user.isPasswordCorrect(password);
 
     if (!IsPasswordValid) {
         throw new apiError(401, "Invalid user credentials")
@@ -146,7 +149,8 @@ const loginUser = asyncHandler(async (req, res) => {
 
     // for now the user variable which contains user model but it's refresh token is empty because user model is updated but not the variable
     // As we are gonna send user it's details but the password and refresh token
-    const loggedInUser = User.findById(user._id).select("-password -refresh")
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+    // const safeUser = loggedInUser.toObject()
 
     // we have to set options for cokiee because cokiee can be modified by frontend side so it's for security.
     const options = {
@@ -154,7 +158,7 @@ const loginUser = asyncHandler(async (req, res) => {
         secure: true
         // now cokiee are now modifiable by server but can be seen
     }
-
+    console.log("user", loggedInUser)
     // so that's how tokens in cookie format in user browser
     return res
         .status(200)
@@ -164,7 +168,7 @@ const loginUser = asyncHandler(async (req, res) => {
             new apiResponse(
                 200,
                 {
-                    userInfo: loggedInUser, accessToken, refreshToken
+                    loggedInUser, accessToken, refreshToken
                 },
                 "User logged in Successfully"
             )
@@ -173,8 +177,38 @@ const loginUser = asyncHandler(async (req, res) => {
 
 })
 
-const logoutUser = asyncHandler((req, res) => {
+const logoutUser = asyncHandler(async (req, res) => {
+
+    // clears refresh token and of user by user id through req.user (which was created by our custom middleware)
+    // and insert new field to user Schema 
+    const user = await User.findByIdAndUpdate(req.user._id,
+        {
+            $set:
+            {
+                refreshToken: undefined
+            }
+        },
+        {
+            new: true
+        }
+
+    )
+
+    // As we know to we use options to securely talk with cookies
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+    // clearing cookies from user browser As they logout
+    return res
+        .clearCookie("accessToken", options)
+        .clearCookie("refreshToken", options).json(
+            new apiResponse(200, {}, "User logged out")
+        )
+
+
 
 })
 
-export { registerUser };
+export { registerUser, loginUser, logoutUser };

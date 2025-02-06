@@ -29,7 +29,7 @@ const userSchema = new Schema({
         trim: true,
         minlength: [8, "Password must at least 8 characters long"],
         maxlength: [30, "Password cannot exceed 30 characters"],
-        select: false, // Preventing password from being returned in queries by default
+        // select: false, // Preventing password from being returned in queries by default
     },
     fullName: {
         type: String,
@@ -86,9 +86,16 @@ userSchema.pre("save", async function (next) {
 })
 
 // Creating our own hook or method whatever you call it 
+
 userSchema.methods.isPasswordCorrect = async function (password) {
+    console.log("password", password, "hashPassword", this.password)
+    // console.log(this)
+    if (!password || !this.password) {
+        throw new Error("Password or hashed password is missing.");
+    }
     return await bcrypt.compare(password, this.password);
-}
+};
+
 
 const validateEnv = () => {
     if (!process.env.ACCESS_TOKEN_SECRET ||
