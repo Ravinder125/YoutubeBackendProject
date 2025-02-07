@@ -8,5 +8,4 @@ const commentSchema = new Schema({
     isDelete: true
 }, { timestamps: true })
 
-const Comment = mongoose.model('Comment', commentSchema)
-export default Comment;
+export const Comment = mongoose.model('Comment', commentSchema)
