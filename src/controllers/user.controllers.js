@@ -206,7 +206,8 @@ const logoutUser = asyncHandler(async (req, res) => {
     // clearing cookies from user browser As they logout
     return res
         .clearCookie("accessToken", options)
-        .clearCookie("refreshToken", options).json(
+        .clearCookie("refreshToken", options)
+        .json(
             new apiResponse(200, {}, "User logged out")
         )
 
@@ -216,19 +217,22 @@ const logoutUser = asyncHandler(async (req, res) => {
 
 const refreshAccesToken = asyncHandler(async (req, res) => {
     try {
-        const IncomingRefreshToken = req.cookies?.refreshAccesToken || req.body.refreshToken
-
+        // IMP - Why do we actually a refreshAccesToken controller the answer is obvious as we know accessToken has a expiry date if it expires then how can he access their stuffs from us(server) because if he doesn't have access token then we can just say that we don't them for temporary and why temporary, because the user still has refresh token, otherwise they have to login again
+        const IncomingRefreshToken = req.cookies?.refreshToken || req.body.refreshToken
+        console.log(IncomingRefreshToken)
         if (!IncomingRefreshToken) {
             throw new apiError(401, "Anuathrized request")
         }
 
         const decodedToken = jwt.verify(IncomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
-        const user = await User.findById(decodedToken?._id).select("-password -refreshToken")
+        const user = await User.findById(decodedToken?._id).select("-password")
 
         if (!user) {
             throw new apiError(404, "Invalid refresh token ")
         }
-
+        console.log("userToken:", user.refreshToken,
+            "IncomingRefreshToken", IncomingRefreshToken
+        )
         if (IncomingRefreshToken !== user?.refreshToken) {
             throw new apiError(404, "Refresh token is expired or used")
         }
@@ -246,7 +250,7 @@ const refreshAccesToken = asyncHandler(async (req, res) => {
                 new apiResponse(
                     200,
                     {
-                        user, accessToken, refreshToken
+                         accessToken, refreshToken
                     },
                     "Access token refresh"
                 )
