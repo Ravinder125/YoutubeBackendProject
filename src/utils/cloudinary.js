@@ -45,19 +45,26 @@ const extractPublicId = (url) => {
 
 const deleteOnCloudinary = async (url) => {
     try {
-        console.log(url)
-        const publicId = extractPublicId(url)
-        console.log(publicId)
-        if (!result.result.okay) {
-            throw new apiError(402, "File doesn't exist", result)
-        }
+        console.log("Deleting file from Cloudinary with URL:", url);
+
+        // Extract the public ID from the URL
+        const publicId = extractPublicId(url);
+        console.log("Extracted Public ID:", publicId);
+
+        // Delete the file from Cloudinary
         const result = await cloudinary.uploader.destroy(publicId);
+
+        // Check if the deletion was successful
+        if (result.result !== "ok") {
+            throw new Error(`Failed to delete file: ${result.result}`);
+        }
+
         console.log('File deleted successfully:', result);
+        return result.result
     } catch (error) {
         console.error('Error deleting file:', error);
+        throw error; // Re-throw the error if you want to handle it elsewhere
     }
-
-
-}
+};
 
 export { uploadOnCloudinary, deleteOnCloudinary };

@@ -319,30 +319,49 @@ const changePassword = asyncHandler(async (req, res) => {
 })
 
 const updateAvatar = asyncHandler(async (req, res) => {
+    // Get user id from verifyJWT middleware
     const userId = req.user?._id;
 
+    // Get localPath of avatar uploaded by USER
     const avatarLocalPath = req.file?.path
     console.log("Request file:", req.file)
     console.log("avatarLocalPath:", avatarLocalPath)
+
+    // Check if user it's empty
     if (!avatarLocalPath) {
         throw new apiError(400, "Avatar file is required")
     }
-    const avatarCloudinaryPath = await User.findById(userId).select("-password -refreshToken")
-    console.log("avatarCloudinaryPath", avatarCloudinaryPath.avatar)
-    const deleteFile = avatarCloudinaryPath ? await deleteOnCloudinary(avatarCloudinaryPath.avatar) :
+
+    // Get user avatar from DB
+    const userAvatar = await User.findById(userId).select("-password -refreshToken")
+    console.log("avatarCloudinaryPath", userAvatar.avatar)
+
+    // Check if user has a avatar or not if he do then delete it on cloudinary
+    if (userAvatar.avatar) {
+        const deleteFile = await deleteOnCloudinary(userAvatar.avatar)
         console.log(deleteFile)
-    if (!deleteFile) {
-        await cleanUpFiles([avatarLocalPath])
-        throw new apiError(502, "Error while deleting file from cloudinary")
+        if (!deleteFile) {
+            await cleanUpFiles([avatarLocalPath])
+            throw new apiError(502, "Error while deleting file from cloudinary")
+        }
     }
+
+    // Upload new avatar to cloudinary 
     const avatar = await uploadOnCloudinary(avatarLocalPath)
+
+    // delete files from local 
     await cleanUpFiles([avatarLocalPath])
 
-    const user = User.findById(userId)
+    // Get user 
+    const user = await User.findById(userId)
 
+    // Save new avatar to Db
     user.avatar = avatar?.url
-    user.save
-    res.status(200).json(200, { avatarUrl: avatar?.url }, "Avatar file is updated")
+    user.save()
+
+    res.status(200).json(
+        new apiResponse(200, { avatarUrl: avatar?.url }, "Avatar file is updated")
+    )
 })
 
 export {
