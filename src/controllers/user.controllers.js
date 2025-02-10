@@ -1,10 +1,11 @@
 import { apiError } from "../utils/apiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.models.js";
-import uploadOnCloudinary from "../utils/cloudinary.js";
+import { deleteOnCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { cleanUpFiles } from "../utils/cleanUpFiles.js";
 import jwt from "jsonwebtoken"
+import { json } from "express";
 
 const generateRefreshAndAccessToken = async (userId) => {
     try {
@@ -72,6 +73,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
     // Upload files to Cloudinary
     const avatar = await uploadOnCloudinary(avatarLocalPath);
+    console.log("avatar:", avatar)
     const coverImage = coverImagePath ? await uploadOnCloudinary(coverImagePath) : null;
     if (!avatar?.url) {
         await cleanUpFiles([avatarLocalPath, coverImagePath]);
@@ -186,14 +188,9 @@ const logoutUser = asyncHandler(async (req, res) => {
     // set Authorization and Bearer in logout headers in postman
     const user = await User.findByIdAndUpdate(req.user._id,
         {
-            $set:
-            {
-                refreshToken: undefined
-            }
+            $set: { refreshToken: undefined }
         },
-        {
-            new: true
-        }
+        { new: true }
 
     )
 
@@ -250,7 +247,7 @@ const refreshAccesToken = asyncHandler(async (req, res) => {
                 new apiResponse(
                     200,
                     {
-                         accessToken, refreshToken
+                        accessToken, refreshToken
                     },
                     "Access token refresh"
                 )
@@ -264,6 +261,95 @@ const refreshAccesToken = asyncHandler(async (req, res) => {
 
 })
 
+const changePassword = asyncHandler(async (req, res) => {
+
+    // Get userId from verifyJWT controller
+    const userId = req.user?._id
+    const user = await User.findById(userId)
+    // console.log(user)
+
+    // Get user inputs 
+    const { oldPassword, newPassword, confirmPassword } = req.body
+    // console.log(oldPassword, confirmPassword, newPassword)
+
+    // Valid required fields
+    if (
+        !oldPassword?.trim() ||
+        !newPassword?.trim() ||
+        !confirmPassword?.trim()
+    ) {
+        throw new apiError(400, "All fields are required")
+    }
+
+    // Check if new password match
+    if (newPassword !== confirmPassword) {
+        throw new apiError(400, "New and confirmation password don't match")
+    }
+
+    // Verify old password
+    const isPasswordValid = await user.isPasswordCorrect(oldPassword)
+    if (!isPasswordValid) {
+        throw new apiError(401, "Invalid old password")
+    }
+
+    // Update password
+    // user.password = confirmPassword;
+    // user.save();
+
+    //    IMP // select won't work on user variable because select work on User
+    // const newPassUser = user?.select('-password -refreshToken')
+
+    // or otherway of changing password
+    const userInfo = await User.findByIdAndUpdate(userId,
+        {
+            $set: { password: confirmPassword },
+        },
+        { new: true }
+    ).select('-password -refreshToken')
 
 
-export { registerUser, loginUser, logoutUser, refreshAccesToken };
+    return res.status(200).json(
+        new apiResponse(
+            200,
+            { user: userInfo },
+            "Password changed successfully")
+    )
+
+
+})
+
+const updateAvatar = asyncHandler(async (req, res) => {
+    const userId = req.user?._id;
+
+    const avatarLocalPath = req.file?.path
+    console.log("Request file:", req.file)
+    console.log("avatarLocalPath:", avatarLocalPath)
+    if (!avatarLocalPath) {
+        throw new apiError(400, "Avatar file is required")
+    }
+    const avatarCloudinaryPath = await User.findById(userId).select("-password -refreshToken")
+    console.log("avatarCloudinaryPath", avatarCloudinaryPath.avatar)
+    const deleteFile = avatarCloudinaryPath ? await deleteOnCloudinary(avatarCloudinaryPath.avatar) :
+        console.log(deleteFile)
+    if (!deleteFile) {
+        await cleanUpFiles([avatarLocalPath])
+        throw new apiError(502, "Error while deleting file from cloudinary")
+    }
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+    await cleanUpFiles([avatarLocalPath])
+
+    const user = User.findById(userId)
+
+    user.avatar = avatar?.url
+    user.save
+    res.status(200).json(200, { avatarUrl: avatar?.url }, "Avatar file is updated")
+})
+
+export {
+    registerUser,
+    loginUser,
+    logoutUser,
+    refreshAccesToken,
+    changePassword,
+    updateAvatar
+};

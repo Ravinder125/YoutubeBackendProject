@@ -1,6 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
-// import { apiError } from "../utils/apiError.js"
-import fs from "fs"
+import { apiError } from "./apiError.js";
+
 
 // Configuration
 cloudinary.config({
@@ -21,7 +21,6 @@ const uploadOnCloudinary = async (localFilePath) => {
         const response = await cloudinary.uploader.upload(localFilePath, {
             resource_type: "auto"
         })
-
         // fs.unlinkSync(localFilePath)
         console.dir("File is uploaded on cloudinary:", response.inspect)
 
@@ -29,8 +28,36 @@ const uploadOnCloudinary = async (localFilePath) => {
 
     } catch (error) {
         console.log('File uploading on cloudinary failed:', error)
-        // localFilePath ? fs.unlinkSync(localFilePath) : null;
     }
 }
 
-export default uploadOnCloudinary;
+// Function to extract public ID from URL
+const extractPublicId = (url) => {
+    const parts = url.split('/upload/');
+    if (parts.length > 1) {
+        const publicIdWithVersion = parts[1].split('/').pop(); // Get the last part after '/upload/'
+        const publicId = publicIdWithVersion.split('.')[0]; // Remove file extension if present
+        console.log(publicId)
+        return publicId;
+    }
+    return null;
+};
+
+const deleteOnCloudinary = async (url) => {
+    try {
+        console.log(url)
+        const publicId = extractPublicId(url)
+        console.log(publicId)
+        if (!result.result.okay) {
+            throw new apiError(402, "File doesn't exist", result)
+        }
+        const result = await cloudinary.uploader.destroy(publicId);
+        console.log('File deleted successfully:', result);
+    } catch (error) {
+        console.error('Error deleting file:', error);
+    }
+
+
+}
+
+export { uploadOnCloudinary, deleteOnCloudinary };
