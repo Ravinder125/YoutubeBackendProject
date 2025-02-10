@@ -356,11 +356,66 @@ const updateAvatar = asyncHandler(async (req, res) => {
     const user = await User.findById(userId)
 
     // Save new avatar to Db
-    user.avatar = avatar?.url
-    user.save()
+    // user.avatar = avatar?.url
+    // user.save()
+    await User.findOneAndUpdate(userId,
+        {
+            $set: { avatar: avatar.url }
+        }
+    )
 
     res.status(200).json(
         new apiResponse(200, { avatarUrl: avatar?.url }, "Avatar file is updated")
+    )
+})
+
+const updateCoverImage = asyncHandler(async (req, res) => {
+    // Get user id from verifyJWT middleware
+    const userId = req.user?._id;
+
+    // Get localPath of coverImage uploaded by USER
+    const coverImageLocalPath = req.file?.path
+    console.log("Request file:", req.file)
+    console.log("coverImageLocalPath:", coverImageLocalPath)
+
+    // Check if user it's empty
+    if (!coverImageLocalPath) {
+        throw new apiError(400, "coverimage file is required")
+    }
+
+    // Get user avatar from DB
+    const user = await User.findById(userId).select("-password -refreshToken")
+    console.log("avatarCloudinaryPath", user.coverImage)
+
+    // Check if user has a coverimage or not if he do then delete it on cloudinary
+    if (user.coverImage) {
+        const deleteFile = await deleteOnCloudinary(user.coverImage)
+        console.log(deleteFile)
+        if (!deleteFile) {
+            await cleanUpFiles([coverImageLocalPath])
+            throw new apiError(502, "Error while deleting file from cloudinary")
+        }
+    }
+
+    // Upload new avatar to cloudinary 
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+
+    // delete files from local 
+    await cleanUpFiles([coverImageLocalPath])
+
+    // // Get user 
+    // const userUpdated = await User.findById(userId)
+    // Save new avatar to Db
+    // user.avatar = avatar?.url
+    // user.save()
+    await User.findOneAndUpdate(userId,
+        {
+            $set: { coverImage: coverImage.url }
+        }
+    )
+
+    res.status(200).json(
+        new apiResponse(200, { coverimageURL: coverImage?.url }, "Avatar file is updated")
     )
 })
 
@@ -370,5 +425,6 @@ export {
     logoutUser,
     refreshAccesToken,
     changePassword,
-    updateAvatar
+    updateAvatar,
+    updateCoverImage
 };
