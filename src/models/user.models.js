@@ -79,21 +79,34 @@ const userSchema = new Schema({
 // It's better to use regular function instead of arrow function to use "this"
 // in pre callback, the function must be async  
 userSchema.pre("save", async function (next) {
-    // if user's Password is not modified then exit(next()) the middelware otherwise hash it 
+    // Check if password the password field has been modified
     if (!this.isModified("password")) return next()
-    this.password = await bcrypt.hash(this.password, 10)
-    next()
+
+    try {
+        this.password = await bcrypt.hash(this.password, 10)
+        next()
+
+    } catch (error) {
+        // Handle any errrors that occur during hashing 
+        next(error)
+    }
+    // if user's Password is not modified then exit(next()) the middelware otherwise hash it 
 })
 
 // Creating our own hook or method whatever you call it 
-
 userSchema.methods.isPasswordCorrect = async function (password) {
-    console.log("password", password, "hashPassword", this.password)
-    // console.log(this)
-    if (!password || !this.password) {
+    // Debugging logs (remove in production)
+    console.log("Input password:", password)
+    console.log("Strored hashed password", this.password)
+
+    // Check if password and hashed password is missing
+    console.log(this)
+    if (!password && !this.password) {
         throw new Error("Password or hashed password is missing.");
     }
-    return await bcrypt.compare(password, this.password);
+    const isMatch = await bcrypt.compare(password, this.password);
+
+    return isMatch;
 };
 
 

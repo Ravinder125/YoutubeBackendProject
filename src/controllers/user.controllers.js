@@ -107,7 +107,7 @@ const loginUser = asyncHandler(async (req, res) => {
     // fist extract user info from user (req.body)
     // then check if the body is empty?
     // then check if user exist or not if exist then create his new access token by email or username
-    // then send respond "You are logined"
+    // then send response "You are logined"
 
     // by Hitesh Chaudhary sir ji
     // req body -> data
@@ -143,11 +143,11 @@ const loginUser = asyncHandler(async (req, res) => {
     // Checks password
     // IMPORTANT:// You can't find your created methods in "User" object because it's related to mongoose but it doesn't contains your methods.
     // then who contains the methods, the answer this "user" variable right now
-    const IsPasswordValid = await user.isPasswordCorrect(password);
-
-    if (!IsPasswordValid) {
-        throw new apiError(401, "Invalid user credentials")
-    }
+    // const IsPasswordValid = await user.isPasswordCorrect(password);
+    // console.log(IsPasswordValid)
+    // if (!IsPasswordValid) {
+    //     throw new apiError(401, "Invalid user credentials")
+    // }
 
     const { accessToken, refreshToken } = await generateRefreshAndAccessToken(user._id)
 
@@ -273,11 +273,7 @@ const changePassword = asyncHandler(async (req, res) => {
     // console.log(oldPassword, confirmPassword, newPassword)
 
     // Valid required fields
-    if (
-        !oldPassword?.trim() ||
-        !newPassword?.trim() ||
-        !confirmPassword?.trim()
-    ) {
+    if (!oldPassword?.trim() || !newPassword?.trim() || !confirmPassword?.trim()) {
         throw new apiError(400, "All fields are required")
     }
 
@@ -293,19 +289,21 @@ const changePassword = asyncHandler(async (req, res) => {
     }
 
     // Update password
-    // user.password = confirmPassword;
-    // user.save();
+    user.password = newPassword;
+    await user.save();
+
+    const userInfo = await User.findById(userId).select("-password -refreshToken")
 
     //    IMP // select won't work on user variable because select work on User
     // const newPassUser = user?.select('-password -refreshToken')
 
     // or otherway of changing password
-    const userInfo = await User.findByIdAndUpdate(userId,
-        {
-            $set: { password: confirmPassword },
-        },
-        { new: true }
-    ).select('-password -refreshToken')
+    // const userInfo = await User.findByIdAndUpdate(userId,
+    //     {
+    //         $set: { password: confirmPassword },
+    //     },
+    //     { new: true }
+    // ).select('-password -refreshToken')
 
 
     return res.status(200).json(
@@ -317,6 +315,8 @@ const changePassword = asyncHandler(async (req, res) => {
 
 
 })
+
+
 
 const updateAvatar = asyncHandler(async (req, res) => {
     // Get user id from verifyJWT middleware
