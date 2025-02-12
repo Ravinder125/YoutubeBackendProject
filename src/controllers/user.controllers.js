@@ -316,8 +316,6 @@ const changePassword = asyncHandler(async (req, res) => {
 
 })
 
-
-
 const updateAvatar = asyncHandler(async (req, res) => {
     // Get user id from verifyJWT middleware
     const userId = req.user?._id;
@@ -417,6 +415,75 @@ const updateCoverImage = asyncHandler(async (req, res) => {
     res.status(200).json(
         new apiResponse(200, { coverimageURL: coverImage?.url }, "Avatar file is updated")
     )
+})
+
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+    const { username } = req.params
+    if (!username?.trim()) {
+        throw new apiError(400, "username is missing")
+    }
+
+    const channel = await User.aggregate([
+        {
+            $match: {
+                username: username?.toLowerCase()
+            },
+        },
+        {
+            $lookup: {
+                from: "Subscription",
+                localField: "_id",
+                foreignField: "channel",
+                as: "subscribers"
+            }
+
+        },
+        {
+            $lookup: {
+                from: "subscription",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subsdribedTo"
+
+            }
+        },
+        {
+            $addFields: {
+                subscriberCount: {
+                    $size: "$subscribers"
+                },
+                channelsSubscribedTo: {
+                    $size: "$subscribedTo"
+                },
+                isSubscribed: {
+                    $cound: {
+                        if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        },
+        {
+            $project: {
+                fullName: 1,
+                username: 1,
+                email: 1,
+                subscriberCount: 1,
+                channelsSubscribedTo: 1,
+                avatar: 1,
+                coverImage: 1,
+            }
+        }
+    ]);
+
+    console.log(channel)
+
+    if (!channel?.length) {
+        throw new apiError(404, "channel doesn't exist")
+    };
+
+    return res.status(200, new apiResponse(200, channel[0], "User channel fechted successfully"))
 })
 
 export {
