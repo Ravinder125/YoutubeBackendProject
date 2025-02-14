@@ -56,12 +56,10 @@ const userSchema = new Schema({
     uploadedVideos: [{
         type: Schema.Types.ObjectId,
         ref: 'Video',
-        default: []
     }],
     history: [{
         type: Schema.Types.ObjectId,
         ref: 'Video',
-        default: []
     }],
 
     // playlist Management

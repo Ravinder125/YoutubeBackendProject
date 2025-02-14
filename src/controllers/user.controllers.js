@@ -7,6 +7,7 @@ import { cleanUpFiles } from "../utils/cleanUpFiles.js";
 import jwt from "jsonwebtoken"
 import { json } from "express";
 import mongoose from "mongoose";
+import { Video } from "../models/video.models.js";
 
 const generateRefreshAndAccessToken = async (userId) => {
     try {
@@ -488,51 +489,160 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 })
 
 const getWatchHistory = asyncHandler(async (req, res) => {
+    // const user = await User.aggregate([
+    //     {
+    //         $match: {
+    //             _id: new mongoose.Types.ObjectId(req.user._id)
+    //         }
+    //     },
+    //     {
+    //         $lookup: {
+    //             from: "videos",
+    //             localField: "history",
+    //             foreignField: "_id",
+    //             as: "watchHistory",
+    //             pipeline: [
+    //                 {
+    //                     $lookup: {
+    //                         from: "users",
+    //                         localField: "createdBy",
+    //                         foreignField: "_id",
+    //                         as: "owner",
+    //                         pipeline: [
+    //                             {
+    //                                 $project: {
+    //                                     fullName: 1,
+    //                                     username: 1,
+    //                                     avatar: 1
+    //                                 }
+    //                             }
+    //                         ]
+    //                     }
+    //                 },
+    //                 {
+    //                     $addFields: {
+    //                         owner: {
+    //                             $first: "$owner"
+    //                         }
+    //                     }
+    //                 }
+    //             ]
+    //         }
+    //     }
+    // ]);
+
     const user = await User.aggregate([
         {
-            $match: {
-                _id: new mongoose.Types.ObjectId(req.user._id)
-            }
+            $match: { _id: new mongoose.Types.ObjectId(req.user._id) }
         },
         {
+
             $lookup: {
                 from: "videos",
-                localField: "watchHistory",
+                localField: "histor",
                 foreignField: "_id",
                 as: "watchHistory",
                 pipeline: [
                     {
                         $lookup: {
                             from: "users",
-                            localField: "owner",
+                            localField: "createdBy",
                             foreignField: "_id",
                             as: "owner",
                             pipeline: [
                                 {
                                     $project: {
-                                        fullName: 1,
                                         username: 1,
-                                        avatar: 1
+                                        fullName: 1,
+                                        avatar: 1,
                                     }
                                 }
                             ]
                         }
-                    },
-                    {
-                        $addFields: {
-                            owener: {
-                                $first: "$owener"
-                            }
-                        }
                     }
                 ]
             }
+        },
+        {
+            $addFields: { owner: { $first: "$owner" } }
         }
-    ]);
+    ])
 
-    return res.status(200).json(new apiResponse(user[0], "Watch history fetched successfully"))
+    console.log(user.watchHistory)
+    if (!user.watchHistory) {
+        throw new apiError(402, "User watch history is empty")
+    }
+    console.log(user)
+
+    return res.status(200).json(new apiResponse(200, user, "Watch history fetched successfully"))
 })
 
+const uploadVideo = asyncHandler(async (req, res) => {
+    const userId = req.user?._id
+    console.log("userId:", userId)
+
+    const videoLocalPath = req.file?.path;
+    console.log("videoLocalPath:", videoLocalPath)
+    if (!videoLocalPath) {
+        throw new apiError(404, "Video is missing");
+    };
+
+    const videoCloudinary = await uploadOnCloudinary(videoLocalPath)
+    await cleanUpFiles([videoLocalPath])
+    console.log(videoCloudinary)
+    if (!videoCloudinary?.url) {
+        throw new apiError(500, "Error while uploading video");
+    };
+
+    const video = await Video.create({
+        videoUrl: videoCloudinary.url,
+        createdBy: userId,
+        duration: videoCloudinary.duration
+
+    })
+
+    // Overwriting uploadedVideos:
+
+    // IMP: The current code replaces the entire uploadedVideos array with [video._id]. If you want to append the new video ID instead of replacing the array, you should use $push instead of $set:
+    const owner = await User.findByIdAndUpdate(userId,
+        {
+            $push: { uploadedVideos: [video._id] }
+        },
+        {
+            new: true
+        }
+    )
+    return res.status(200)
+        .json(
+            new apiResponse(200, { Cloudinary: videoCloudinary, Video: video, owner: owner }, "Video is successfully uploaded"))
+})
+
+
+const videoWatched = asyncHandler(async (req, res) => {
+    const userId = req.user._id;
+
+    const videoId = new mongoose.Types.ObjectId(req.params.videoId);
+    if (!videoId) {
+        throw new apiError(402, "Video is missing")
+    }
+    console.log(videoId)
+
+    const watchHistory = await User.findByIdAndUpdate(userId,
+        {
+            $push: { history: [videoId] }
+        },
+        { new: true }
+    )
+    const video = await Video.findById(videoId)
+    console.log(video)
+    console.log(watchHistory)
+    if (!watchHistory) {
+        throw new apiError(403, "Error while adding video id in watch history")
+    }
+
+    return res.status(201).json(new apiResponse(201, { watchHistory: watchHistory }, "Video successfully added in watch history"))
+
+})
 export {
     registerUser,
     loginUser,
@@ -542,5 +652,7 @@ export {
     updateAvatar,
     updateCoverImage,
     getUserChannelProfile,
-    getWatchHistory
+    getWatchHistory,
+    uploadVideo,
+    videoWatched
 };
