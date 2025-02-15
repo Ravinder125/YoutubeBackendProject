@@ -51,8 +51,6 @@ const userSchema = new Schema({
     },
 
     // Relationships
-    subscription: [{ type: Schema.Types.ObjectId, ref: 'User', default: [] }],
-    subscribers: [{ type: Schema.Types.ObjectId, ref: 'User', index: true, default: [] }],
     uploadedVideos: [{
         type: Schema.Types.ObjectId,
         ref: 'Video',

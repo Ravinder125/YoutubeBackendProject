@@ -1,6 +1,7 @@
 import { apiError } from "../utils/apiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.models.js";
+import { Subscription } from "../models/subscription.models.js"
 import { deleteOnCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { cleanUpFiles } from "../utils/cleanUpFiles.js";
@@ -419,118 +420,137 @@ const updateCoverImage = asyncHandler(async (req, res) => {
     )
 })
 
+const subscribeToChannel = asyncHandler(async (req, res) => {
+    const userId = req.user._id;
+
+    const { username } = req.params;
+    if (!username?.trim()) throw new apiError(402, "Channel owner id is missing");
+    console.log(userId)
+    const user = await User.findById(userId)
+    console.log("user:", user)
+    const channelOwner = await User.findOne({ username }).select('-password -refreshToken');
+    if (!channelOwner) throw new apiError(401, "Channel not found")
+
+    const subscription = await Subscription.create({
+        subscriber: user._id,
+        channel: channelOwner._id
+    })
+
+    return res.status(200).json(new apiResponse(200, { subsciption: subscription }, `You succesfully subscribed to ${channelOwner.username}`))
+
+})
+
 const getUserChannelProfile = asyncHandler(async (req, res) => {
     const { username } = req.params
     if (!username?.trim()) {
         throw new apiError(400, "username is missing")
     }
 
-    const channel = await User.aggregate([
-        {
-            $match: {
-                username: username?.toLowerCase()
-            },
-        },
-        {
-            $lookup: {
-                from: "Subscription",
-                localField: "_id",
-                foreignField: "channel",
-                as: "subscribers"
-            }
-
-        },
-        {
-            $lookup: {
-                from: "subscription",
-                localField: "_id",
-                foreignField: "subscriber",
-                as: "subsdribedTo"
-
-            }
-        },
-        {
-            $addFields: {
-                subscriberCount: {
-                    $size: "$subscribers"
-                },
-                channelsSubscribedTo: {
-                    $size: "$subscribedTo"
-                },
-                isSubscribed: {
-                    $cound: {
-                        if: { $in: [req.user?._id, "$subscribers.subscriber"] },
-                        then: true,
-                        else: false
-                    }
-                }
-            }
-        },
-        {
-            $project: {
-                fullName: 1,
-                username: 1,
-                email: 1,
-                subscriberCount: 1,
-                channelsSubscribedTo: 1,
-                avatar: 1,
-                coverImage: 1,
-            }
-        }
-    ]);
-
-    console.log(channel)
-
-    if (!channel?.length) {
-        throw new apiError(404, "channel doesn't exist")
-    };
-
-    return res.status(200, new apiResponse(200, channel[0], "User channel fechted successfully"))
-})
-
-const getWatchHistory = asyncHandler(async (req, res) => {
-    // const user = await User.aggregate([
+    // const channel = await User.aggregate([
     //     {
     //         $match: {
-    //             _id: new mongoose.Types.ObjectId(req.user._id)
-    //         }
+    //             username: username
+    //         },
     //     },
     //     {
     //         $lookup: {
-    //             from: "videos",
-    //             localField: "history",
-    //             foreignField: "_id",
-    //             as: "watchHistory",
-    //             pipeline: [
-    //                 {
-    //                     $lookup: {
-    //                         from: "users",
-    //                         localField: "createdBy",
-    //                         foreignField: "_id",
-    //                         as: "owner",
-    //                         pipeline: [
-    //                             {
-    //                                 $project: {
-    //                                     fullName: 1,
-    //                                     username: 1,
-    //                                     avatar: 1
-    //                                 }
-    //                             }
-    //                         ]
-    //                     }
-    //                 },
-    //                 {
-    //                     $addFields: {
-    //                         owner: {
-    //                             $first: "$owner"
-    //                         }
-    //                     }
+    //             from: "Subscription",
+    //             localField: "_id",
+    //             foreignField: "channel",
+    //             as: "subscribers"
+    //         }
+
+    //     },
+    //     {
+    //         $lookup: {
+    //             from: "subscription",
+    //             localField: "_id",
+    //             foreignField: "subscriber",
+    //             as: "subscribedTo"
+
+    //         }
+    //     },
+    //     {
+    //         $addFields: {
+    //             subscriberCount: {
+    //                 $size: "$subscribers"
+    //             },
+    //             channelsSubscribedTo: {
+    //                 $size: "$subscribedTo"
+    //             },
+    //             isSubscribed: {
+    //                 $cond: {
+    //                     if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+    //                     then: true,
+    //                     else: false
     //                 }
-    //             ]
+    //             }
+    //         }
+    //     },
+    //     {
+    //         $project: {
+    //             fullName: 1,
+    //             username: 1,
+    //             email: 1,
+    //             subscriberCount: 1,
+    //             channelsSubscribedTo: 1,
+    //             avatar: 1,
+    //             coverImage: 1,
     //         }
     //     }
     // ]);
 
+    const channel = await User.aggregate([
+        {
+            $match: { username: username }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedChannels"
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "channel",
+                as: "subscribers"
+            }
+        },
+        {
+            $addFields: {
+                subscriberCount: { $size: "$subscribers" },
+                subscribedChannelsCount: { $size: "$subscribedChannels" }
+            }
+        },
+        {
+            $project: {
+                avatar: 1,
+                coverImage: 1,
+                subscribedChannelsCount: 1,
+                subscriberCount: 1,
+                username: 1,
+                fullName: 1,
+                email: 1
+            }
+        }
+    ]);
+
+    const channelOwner = await User.findOne({ username: username })
+
+    console.log(channel)
+    console.log(channelOwner)
+    if (!channel?.length === 0) {
+        throw new apiError(404, "User not found")
+    };
+
+    return res.status(200).json(new apiResponse(200, channel[0], "User channel fechted successfully"))
+})
+
+const getWatchHistory = asyncHandler(async (req, res) => {
     const user = await User.aggregate([
         {
             $match: { _id: new mongoose.Types.ObjectId(req.user._id) }
@@ -617,6 +637,42 @@ const uploadVideo = asyncHandler(async (req, res) => {
             new apiResponse(200, { Cloudinary: videoCloudinary, Video: video, owner: owner }, "Video is successfully uploaded"))
 })
 
+const getOwnVideos = asyncHandler(async (req, res) => {
+    const userid = req.user._id
+    const videos = await User.aggregate([
+        { $match: { _id: new mongoose.Types.ObjectId(userid) } },
+        {
+            $lookup: {
+                from: "videos",
+                localField: "_id",
+                foreignField: "createdBy",
+                as: "videos"
+            },
+        },
+        {
+
+            $addFields: {
+                videosCount: { $size: "$videos" },
+            }
+        },
+        {
+            $project: {
+                videos: 1,
+                videosCount: 1
+            }
+        }
+    ]);
+
+    console.log(videos)
+    if (!videos.length === 0) {
+        throw new apiError(401, "Videos not found")
+    };
+
+    return res.status(200).json(new apiResponse(200, videos, "Videos successfully fetched"))
+
+
+
+})
 
 const videoWatched = asyncHandler(async (req, res) => {
     const userId = req.user._id;
@@ -654,5 +710,7 @@ export {
     getUserChannelProfile,
     getWatchHistory,
     uploadVideo,
-    videoWatched
+    videoWatched,
+    subscribeToChannel,
+    getOwnVideos
 };
