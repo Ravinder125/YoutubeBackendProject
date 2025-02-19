@@ -121,15 +121,22 @@ const addVideoToHistory = asyncHandler(async (req, res) => {
     return res.status(201).json(new apiResponse(201, { watchHistory: watchHistory }, "Video successfully added in watch history"))
 
 })
+
 const getAllVideos = asyncHandler(async (req, res) => {
 
-    const userId = req.user._id;
+    // const userId = req.user._id;
+
+    const { page = 1, limit = 3, query, sortBy, sorttype, userId } = req.query
 
     // Create aggregation pipeline
-    const aggregateQuery = Video.aggregate([]);
+    const aggregateQuery = Video.aggregate([
+        {
+            $sort: { _id: 1 }
+        }
+    ]);
 
     // Pagination options
-    const options = { page: 1, limit: 5 };
+    const options = { page: 2, limit: 5 };
 
     // what is paginating it's actually used to devide videos into pages according to pages that's why there's a object called options
     // Paginate using aggregatePaginate
@@ -140,4 +147,44 @@ const getAllVideos = asyncHandler(async (req, res) => {
 
 
 });
-export { addVideoToHistory, getOwnVideos, uploadVideo, getAllVideos }
+
+const getVideoById = asyncHandler(async (req, res) => {
+    const { videoId } = req.params;
+    console.log(videoId);
+
+    if (!videoId) throw new apiError(400, "video id is required");
+    const video = await Video.findById(videoId);
+
+    if (!video) throw new apiError(404, "Video doesn't exist");
+
+    return res.status(200).json(new apiResponse(200, { video: video }, "Video is successfully fetched"));
+
+});
+
+const updateVideo = asyncHandler(async (req, res) => {
+    const { videoId } = req.params;
+    console.log(videoId);
+
+    if (!videoId) throw new apiError(404, "Video id is missing");
+
+    if (!req.body) throw new apiError(404, "Atleast one field is required")
+    const { title, description, likes, dislikes, tags, shared, views, status } = req.body;
+    if (req.file) {
+
+        var { thumbnail } = req.file
+    }
+
+    const updatedVideo = await Video.findByIdAndUpdate(new mongoose.Types.ObjectId(videoId), {
+        $set: [
+            title, description, thumbnail || "",
+            { $push: [likes] }, { $push: [dislikes] }, { $push: [tags] }, { $push: [views], status }
+        ]
+    })
+
+    res.status(200).json(new apiResponse(200, { updateVideo: updateVideo }, "Video successfully updated"))
+
+
+
+})
+
+export { getVideoById, updateVideo, addVideoToHistory, getOwnVideos, uploadVideo, getAllVideos }
