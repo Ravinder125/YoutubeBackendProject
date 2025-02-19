@@ -4,6 +4,8 @@ import { Video } from "../models/video.models.js"
 import { apiError } from "../utils/apiError.js"
 import mongoose from "mongoose"
 import { apiResponse } from "../utils/apiResponse.js"
+import { uploadOnCloudinary } from "../utils/cloudinary.js"
+import { cleanUpFiles } from "../utils/cleanUpFiles.js"
 
 
 
@@ -169,19 +171,29 @@ const updateVideo = asyncHandler(async (req, res) => {
 
     if (!req.body) throw new apiError(404, "Atleast one field is required")
     const { title, description, likes, dislikes, tags, shared, views, status } = req.body;
+    console.log(req.file)
     if (req.file) {
 
-        var { thumbnail } = req.file
+        var thumbnailLocalPath = req.file?.path
     }
 
+    const thumbnail = thumbnailLocalPath ? await uploadOnCloudinary(thumbnailLocalPath) : ""
+    await cleanUpFiles([thumbnailLocalPath])
+
+    console.log(thumbnail)
     const updatedVideo = await Video.findByIdAndUpdate(new mongoose.Types.ObjectId(videoId), {
-        $set: [
-            title, description, thumbnail || "",
-            { $push: [likes] }, { $push: [dislikes] }, { $push: [tags] }, { $push: [views], status }
-        ]
+        $set: { title, description, thumbnail: thumbnail.url, status },
+        $push: {
+            likes: likes ? [likes] : [],
+            dislike: dislikes ? [dislikes] : [],
+            tags: tags ? [tags] : [],
+            shared: shared ? [shared] : [],
+        },
     })
 
-    res.status(200).json(new apiResponse(200, { updateVideo: updateVideo }, "Video successfully updated"))
+    console.log(updatedVideo)
+
+    res.status(200).json(new apiResponse(200, { updateVideo: updatedVideo }, "Video successfully updated"))
 
 
 
