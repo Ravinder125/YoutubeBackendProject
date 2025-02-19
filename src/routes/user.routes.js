@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { registerUser, loginUser, logoutUser, refreshAccesToken, changePassword, updateAvatar, updateCoverImage, getUserChannelProfile, getWatchHistory, uploadVideo, videoWatched, subscribeToChannel, getOwnVideos }
+import { registerUser, getWatchHistory, loginUser, logoutUser, refreshAccesToken, changePassword, updateAvatar, updateCoverImage, getUserChannelProfile, getUserProfile }
     from '../controllers/user.controllers.js';
 import { upload } from '../middlewares/multer.middlewares.js';
 import { verifyJWT } from '../middlewares/auth.middlewares.js';
@@ -48,11 +48,8 @@ router.route('/change-password').post(verifyJWT, changePassword);
 router.route('/update-avatar').patch(verifyJWT, upload.single("avatar"), updateAvatar);
 router.route('/update-coverimage').patch(verifyJWT, upload.single("coverImage"), updateCoverImage);
 router.route("/c/:username").get(verifyJWT, getUserChannelProfile)
-router.route('/watchHistory').get(verifyJWT, getWatchHistory)
-router.route('/upload-video').patch(verifyJWT, upload.single("video"), uploadVideo)
-router.route('/video-watched/c/:videoId').get(verifyJWT, videoWatched)
-router.route('/subscribe-to-channel/c/:username').get(verifyJWT, subscribeToChannel)
-router.route('/get-channel-profile/c/:username').get(verifyJWT, getUserChannelProfile)
-router.route('/get-own-videos').get(verifyJWT, getOwnVideos)
+router.route('/get-profile').get(verifyJWT, getUserProfile)
+router.route('/history').get(getWatchHistory)
+
 
 export default router;

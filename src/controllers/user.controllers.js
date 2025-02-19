@@ -6,9 +6,7 @@ import { deleteOnCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { cleanUpFiles } from "../utils/cleanUpFiles.js";
 import jwt from "jsonwebtoken"
-import { json } from "express";
 import mongoose from "mongoose";
-import { Video } from "../models/video.models.js";
 
 const generateRefreshAndAccessToken = async (userId) => {
     try {
@@ -30,7 +28,6 @@ const generateRefreshAndAccessToken = async (userId) => {
         throw new apiError(500, 'Error while generating refresh tand access tokens')
     }
 }
-
 
 const registerUser = asyncHandler(async (req, res) => {
     // logic algorithm of fetching data from user, createing a new user and uploading files on cloudinary :-
@@ -420,24 +417,11 @@ const updateCoverImage = asyncHandler(async (req, res) => {
     )
 })
 
-const subscribeToChannel = asyncHandler(async (req, res) => {
+const getUserProfile = asyncHandler(async (req, res) => {
     const userId = req.user._id;
+    const user = await User.findById(userId).select("-password -refreshToken");
 
-    const { username } = req.params;
-    if (!username?.trim()) throw new apiError(402, "Channel owner id is missing");
-    console.log(userId)
-    const user = await User.findById(userId)
-    console.log("user:", user)
-    const channelOwner = await User.findOne({ username }).select('-password -refreshToken');
-    if (!channelOwner) throw new apiError(401, "Channel not found")
-
-    const subscription = await Subscription.create({
-        subscriber: user._id,
-        channel: channelOwner._id
-    })
-
-    return res.status(200).json(new apiResponse(200, { subsciption: subscription }, `You succesfully subscribed to ${channelOwner.username}`))
-
+    return res.status(200).json(new apiResponse(200, { user: user }, "User details successfully fetched"))
 })
 
 const getUserChannelProfile = asyncHandler(async (req, res) => {
@@ -523,7 +507,10 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         {
             $addFields: {
                 subscriberCount: { $size: "$subscribers" },
-                subscribedChannelsCount: { $size: "$subscribedChannels" }
+                subscribedChannelsCount: { $size: "$subscribedChannels" },
+                isSubscribed: {
+                    $in: [new mongoose.Types.ObjectId(req.user._id), "$subscribers.subscriber"]
+                }
             }
         },
         {
@@ -534,7 +521,8 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
                 subscriberCount: 1,
                 username: 1,
                 fullName: 1,
-                email: 1
+                email: 1,
+                isSubscribed: 1
             }
         }
     ]);
@@ -597,108 +585,6 @@ const getWatchHistory = asyncHandler(async (req, res) => {
     return res.status(200).json(new apiResponse(200, user, "Watch history fetched successfully"))
 })
 
-const uploadVideo = asyncHandler(async (req, res) => {
-    const userId = req.user?._id
-    console.log("userId:", userId)
-
-    const videoLocalPath = req.file?.path;
-    console.log("videoLocalPath:", videoLocalPath)
-    if (!videoLocalPath) {
-        throw new apiError(404, "Video is missing");
-    };
-
-    const videoCloudinary = await uploadOnCloudinary(videoLocalPath)
-    await cleanUpFiles([videoLocalPath])
-    console.log(videoCloudinary)
-    if (!videoCloudinary?.url) {
-        throw new apiError(500, "Error while uploading video");
-    };
-
-    const video = await Video.create({
-        videoUrl: videoCloudinary.url,
-        createdBy: userId,
-        duration: videoCloudinary.duration
-
-    })
-
-    // Overwriting uploadedVideos:
-
-    // IMP: The current code replaces the entire uploadedVideos array with [video._id]. If you want to append the new video ID instead of replacing the array, you should use $push instead of $set:
-    const owner = await User.findByIdAndUpdate(userId,
-        {
-            $push: { uploadedVideos: [video._id] }
-        },
-        {
-            new: true
-        }
-    )
-    return res.status(200)
-        .json(
-            new apiResponse(200, { Cloudinary: videoCloudinary, Video: video, owner: owner }, "Video is successfully uploaded"))
-})
-
-const getOwnVideos = asyncHandler(async (req, res) => {
-    const userid = req.user._id
-    const videos = await User.aggregate([
-        { $match: { _id: new mongoose.Types.ObjectId(userid) } },
-        {
-            $lookup: {
-                from: "videos",
-                localField: "_id",
-                foreignField: "createdBy",
-                as: "videos"
-            },
-        },
-        {
-
-            $addFields: {
-                videosCount: { $size: "$videos" },
-            }
-        },
-        {
-            $project: {
-                videos: 1,
-                videosCount: 1
-            }
-        }
-    ]);
-
-    console.log(videos)
-    if (!videos.length === 0) {
-        throw new apiError(401, "Videos not found")
-    };
-
-    return res.status(200).json(new apiResponse(200, videos, "Videos successfully fetched"))
-
-
-
-})
-
-const videoWatched = asyncHandler(async (req, res) => {
-    const userId = req.user._id;
-
-    const videoId = new mongoose.Types.ObjectId(req.params.videoId);
-    if (!videoId) {
-        throw new apiError(402, "Video is missing")
-    }
-    console.log(videoId)
-
-    const watchHistory = await User.findByIdAndUpdate(userId,
-        {
-            $push: { history: [videoId] }
-        },
-        { new: true }
-    )
-    const video = await Video.findById(videoId)
-    console.log(video)
-    console.log(watchHistory)
-    if (!watchHistory) {
-        throw new apiError(403, "Error while adding video id in watch history")
-    }
-
-    return res.status(201).json(new apiResponse(201, { watchHistory: watchHistory }, "Video successfully added in watch history"))
-
-})
 export {
     registerUser,
     loginUser,
@@ -707,10 +593,7 @@ export {
     changePassword,
     updateAvatar,
     updateCoverImage,
+    getUserProfile,
     getUserChannelProfile,
-    getWatchHistory,
-    uploadVideo,
-    videoWatched,
-    subscribeToChannel,
-    getOwnVideos
+    getWatchHistory
 };
