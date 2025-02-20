@@ -49,7 +49,7 @@ router.route('/update-avatar').patch(verifyJWT, upload.single("avatar"), updateA
 router.route('/update-coverimage').patch(verifyJWT, upload.single("coverImage"), updateCoverImage);
 router.route("/c/:username").get(verifyJWT, getUserChannelProfile)
 router.route('/get-profile').get(verifyJWT, getUserProfile)
-router.route('/history').get(getWatchHistory)
+router.route('/history').get(verifyJWT, getWatchHistory)
 
 
 export default router;

@@ -25,12 +25,14 @@ app.use(cookieParser());
 // Import routes
 import userRouter from "./routes/user.routes.js"
 import videoRouter from "./routes/video.routes.js"
+import subscriptionRouter from "./routes/subscription.routes.js"
 // Routes declaration
 // As we are importing routes we have to use "app.use" middleware
 // Every user router will be handled here
 // URI = http://localhost:4000/api/v1/users/register
 app.use('/api/v1/users', videoRouter)
 app.use('/api/v1/users', userRouter)
+app.use('/api/v1/users', subscriptionRouter)
 
 
 

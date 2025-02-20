@@ -51,10 +51,10 @@ const userSchema = new Schema({
     },
 
     // Relationships
-    uploadedVideos: [{
-        type: Schema.Types.ObjectId,
-        ref: 'Video',
-    }],
+    // uploadedVideos: [{
+    //     type: Schema.Types.ObjectId,
+    //     ref: 'Video',
+    // }],
     history: [{
         type: Schema.Types.ObjectId,
         ref: 'Video',

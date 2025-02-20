@@ -15,7 +15,7 @@ const videoSchema = new Schema({
     shared: [{ type: Schema.Types.ObjectId, ref: 'User', default: 0 }],
     saved: [{ type: Schema.Types.ObjectId, ref: 'User', default: 0 }],
     views: [{ type: Schema.Types.ObjectId, ref: "User" }],
-    status: { type: String, enum: ["PENDING", "PRIVATE", "PUBLIC"], default: "PENDING", required: true }
+    isPublished: { type: Boolean, default: false }
 }, { timestamps: true });
 
 videoSchema.plugin(mongooseAggregatePaginate)

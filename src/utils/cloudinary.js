@@ -67,4 +67,13 @@ const deleteOnCloudinary = async (url) => {
     }
 };
 
-export { uploadOnCloudinary, deleteOnCloudinary };
+const deleteVideoOnCloudinary = async (url) => {
+    const publicId = extractPublicId(url);
+
+    cloudinary.api
+        .delete_resources(['e6sdugyzv9n71xd7r3fs'],
+            { type: 'upload', resource_type: 'video' })
+        .then(console.log("Video is successfully deleted")).catch((error) => console.log("Error", error))
+}
+
+export { uploadOnCloudinary, deleteOnCloudinary, deleteVideoOnCloudinary };
