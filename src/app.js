@@ -26,6 +26,7 @@ app.use(cookieParser());
 import userRouter from "./routes/user.routes.js"
 import videoRouter from "./routes/video.routes.js"
 import subscriptionRouter from "./routes/subscription.routes.js"
+import playlistRouter from "./routes/playlist.routes.js"
 // Routes declaration
 // As we are importing routes we have to use "app.use" middleware
 // Every user router will be handled here
@@ -33,6 +34,7 @@ import subscriptionRouter from "./routes/subscription.routes.js"
 app.use('/api/v1/users', videoRouter)
 app.use('/api/v1/users', userRouter)
 app.use('/api/v1/users', subscriptionRouter)
+app.use('/api/v1/users', playlistRouter)
 
 
 

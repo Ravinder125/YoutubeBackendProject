@@ -3,10 +3,9 @@ import mongoose, { Schema } from "mongoose";
 const playlistSchema = new Schema({
     name: {
         type: String,
-        required: true,
         trim: true,
-        minlength: [2, "Name must be at least 2 character long"],
-        maxlength: [50, "Name cannote exceed 50 characters"]
+        maxlength: [50, "Name cannot exceed 50 characters"],
+        default: "Playlist"
     },
     description: {
         type: String,
@@ -22,8 +21,6 @@ const playlistSchema = new Schema({
     videos: [{
         type: Schema.Types.ObjectId,
         ref: 'Video',
-        required: true,
-        default: [],
     }],
     isPublic: {
         type: Boolean,
@@ -32,5 +29,4 @@ const playlistSchema = new Schema({
 
 }, { timestamps: true });
 
-const Playlist = mongoose.model('Playlist', playlistSchema);
-export { Playlist };
+export const Playlist = mongoose.model('Playlist', playlistSchema);

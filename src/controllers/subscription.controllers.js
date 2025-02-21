@@ -3,8 +3,6 @@ import { apiError } from "../utils/apiError.js";
 import { Subscription } from "../models/subscription.models.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import mongoose from "mongoose";
-import { updateAvatar } from "./user.controllers.js";
-
 
 const toggleSubscription = asyncHandler(async (req, res) => {
     const { channelId } = req.params;
