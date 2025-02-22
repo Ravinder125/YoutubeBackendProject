@@ -1,18 +1,25 @@
 import { Router } from "express"
-import { addVideoToPlaylist, createPlaylist, deleteVideoPlaylist, getPLaylistById } from "../controllers/playlist.controllers.js";
+import { addVideoToPlaylist, createPlaylist, deletePlaylist, removeVideoFromPlaylist, getPlaylistById, updatePlaylist, getUserPlaylists } from "../controllers/playlist.controllers.js";
 import { verifyJWT } from "../middlewares/auth.middlewares.js";
 
 const router = Router();
 
-router.route('/').post(verifyJWT, createPlaylist);
+// Create a new playlist
+router.route('/create/playlist').post(verifyJWT, createPlaylist);
+
+router.route('/get/user/playlists').get(verifyJWT, getUserPlaylists);
+
+// Add or remove a video from a playlist
 router
-    .route('/:playlistId/:videoId')
-    .patch(verifyJWT, addVideoToPlaylist)
-    .delete(verifyJWT, deleteVideoPlaylist)
+    .route('/playlist/videos/:playlistId/:videoId')
+    .patch(verifyJWT, addVideoToPlaylist) // Add video to playlist
+    .put(verifyJWT, removeVideoFromPlaylist); // Remove video from playlist
 
+// Manage a specific playlist
 router
-    .route('/p/:playlistId')
-    .get(verifyJWT, getPLaylistById)
-
-
+    .route('/playlist/:playlistId')
+    .patch(verifyJWT, updatePlaylist) // Update playlist details
+    .get(verifyJWT, getPlaylistById) // Get playlist by ID
+    .delete(verifyJWT, deletePlaylist); // Delete playlist
+// TODO: add a avatar functionality in playlist
 export default router
