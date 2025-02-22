@@ -2,20 +2,18 @@ import mongoose, { Schema, Types } from "mongoose";
 import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 const videoSchema = new Schema({
-    title: { type: String, trim: true },
+    title: { type: String, trim: true, required: true },
     description: { type: String, trim: true },
-    videoUrl: { type: String, required: true, trim: true }, // cloudinary url
-    duration: { type: Number, required: true }, // Cloudinary 
-    thumbnail: { type: String, }, /* Cloudinary */
+    videoUrl: { type: String, required: true, trim: true }, // Cloudinary URL
+    duration: { type: Number, required: true }, // Duration in seconds
+    thumbnail: { type: String, trim: true }, // Cloudinary URL
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    likes: [{ type: Schema.Types.ObjectId, ref: 'User', default: 0 }],
-    dislikes: [{ type: Types.ObjectId, ref: 'User', default: 0 }],
-    comments: [{ type: Schema.Types.ObjectId, ref: 'Comment', default: 0 }], // Reference Comment model
-    tags: [{ type: String, trim: true, lowercase: true, index: true, default: 0 }],
-    shared: [{ type: Schema.Types.ObjectId, ref: 'User', default: 0 }],
-    saved: [{ type: Schema.Types.ObjectId, ref: 'User', default: 0 }],
+    tags: [{ type: String, trim: true, lowercase: true, index: true }],
+    shared: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    saved: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     views: [{ type: Schema.Types.ObjectId, ref: "User" }],
-    isPublished: { type: Boolean, default: false }
+    isPublished: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false }
 }, { timestamps: true });
 
 videoSchema.plugin(mongooseAggregatePaginate)

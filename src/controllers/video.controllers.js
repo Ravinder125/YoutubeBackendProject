@@ -59,7 +59,7 @@ const uploadVideo = asyncHandler(async (req, res) => {
     return res.status(200)
         .json(
             new apiResponse(200, { Video: video }, "Video is successfully uploaded"))
-})
+});
 
 const getOwnVideos = asyncHandler(async (req, res) => {
     const userid = req.user._id
@@ -104,7 +104,7 @@ const getOwnVideos = asyncHandler(async (req, res) => {
 
 
 
-})
+});
 
 const addVideoToHistory = asyncHandler(async (req, res) => {
     const userId = req.user._id;
@@ -130,7 +130,7 @@ const addVideoToHistory = asyncHandler(async (req, res) => {
 
     return res.status(201).json(new apiResponse(201, { watchHistory: watchHistory }, "Video successfully added in watch history"))
 
-})
+});
 
 const getAllVideos = asyncHandler(async (req, res) => {
 
