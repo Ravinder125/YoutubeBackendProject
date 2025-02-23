@@ -28,6 +28,7 @@ import videoRouter from "./routes/video.routes.js"
 import subscriptionRouter from "./routes/subscription.routes.js"
 import playlistRouter from "./routes/playlist.routes.js"
 import likeRouter from "./routes/like.routes.js"
+import tweetRouter from "./routes/tweet.routes.js"
 // Routes declaration
 // As we are importing routes we have to use "app.use" middleware
 // Every user router will be handled here
@@ -37,6 +38,7 @@ app.use('/api/v1/users', userRouter)
 app.use('/api/v1/users', subscriptionRouter)
 app.use('/api/v1/users', playlistRouter)
 app.use('/api/v1/users', likeRouter)
+app.use('/api/v1/users', tweetRouter)
 
 
 
