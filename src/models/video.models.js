@@ -13,7 +13,7 @@ const videoSchema = new Schema({
     saved: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     views: [{ type: Schema.Types.ObjectId, ref: "User" }],
     isPublished: { type: Boolean, default: false },
-    isDeleted: { type: Boolean, default: false }
+    isDelete: { type: Boolean, default: false, index: true }
 }, { timestamps: true });
 
 videoSchema.plugin(mongooseAggregatePaginate)

@@ -25,6 +25,11 @@ const playlistSchema = new Schema({
     isPublic: {
         type: Boolean,
         default: true,
+    },
+    isDelete: {
+        type: Boolean,
+        default: false,
+        index: true
     }
 
 }, { timestamps: true });

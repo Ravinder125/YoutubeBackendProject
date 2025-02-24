@@ -139,18 +139,25 @@ const getAllVideos = asyncHandler(async (req, res) => {
     const { page = 1, limit = 3, query, sortBy, sorttype, userId } = req.query
 
     // Create aggregation pipeline
-    const aggregateQuery = Video.aggregate([
+    const videoAggregate = [
+        // { $match: { isDelete: false } }, // only not deleted files
         {
-            $sort: { _id: 1 }
+            $lookup: {
+                from: "users",
+                foreignField: "_id",
+                localField: "createdBy",
+                as: "creator",
+                pipeline: [{ $project: { avatar: 1, username: 1 } }]
+            }
         }
-    ]);
+    ];
 
     // Pagination options
-    const options = { page: 2, limit: 5 };
+    const options = { page: parseInt(page), limit: parseInt(limit) };
 
     // what is paginating it's actually used to devide videos into pages according to pages that's why there's a object called options
     // Paginate using aggregatePaginate
-    const paginate = await Video.aggregatePaginate(aggregateQuery, options)
+    const paginate = await Video.aggregatePaginate(Video.aggregate(videoAggregate), options)
 
     // Send response
     res.status(200).json(new apiResponse(200, paginate, "Videos successfully fetched"));
@@ -215,7 +222,8 @@ const deleteVideo = asyncHandler(async (req, res) => {
 
     // const isDeletedOnCloudinary = await deleteOnCloudinary(video.videoUrl)
     const isDeletedOnCloudinary = await deleteVideoOnCloudinary(video.videoUrl)
-    const isVideoRemoved = await Video.findByIdAndDelete(video._id);
+    const isVideoRemoved = await Video.findByIdAndUpdate(
+        video._id, { $set: { isDelete: true } });
 
     return res.status(200).json(new apiResponse(200, { isVideoRemoved: isVideoRemoved }, "Video is successfully deleted"))
 })
