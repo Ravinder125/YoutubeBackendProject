@@ -6,9 +6,9 @@ import { getSubscribedChannels, getUserChannelSubscribers, toggleSubscription, }
 const router = Router();
 
 router
-    .route("/c/:channelId")
-    .post(verifyJWT, getSubscribedChannels)
+    .route("/subscriber/:channelId")
+    .get(verifyJWT, getSubscribedChannels)
     .patch(verifyJWT, toggleSubscription)
 
-router.route("/u/:subscriberId").get(verifyJWT, getUserChannelSubscribers)
+router.route("/channel/:subscriberId").get(verifyJWT, getUserChannelSubscribers)
 export default router

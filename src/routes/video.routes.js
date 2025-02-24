@@ -22,10 +22,10 @@ router
         ]),
         uploadVideo)
 
-router.route('/own/videos').get(verifyJWT, getOwnVideos)
+router.route('/own/video').get(verifyJWT, getOwnVideos)
 router
-    .route('/:videoId')
-    .get(verifyJWT, addVideoToHistory)
+    .route('/video/v/:videoId')
+    .put(verifyJWT, addVideoToHistory)
     .patch(verifyJWT, upload.single("thumbnail"), updateVideo)
 
 router.route('/delete/:videoId').delete(verifyJWT, deleteVideo);

@@ -2,7 +2,7 @@ import mongoose, { Schema, Types } from "mongoose";
 import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 const videoSchema = new Schema({
-    title: { type: String, trim: true, required: true },
+    title: { type: String, trim: true, },
     description: { type: String, trim: true },
     videoUrl: { type: String, required: true, trim: true }, // Cloudinary URL
     duration: { type: Number, required: true }, // Duration in seconds

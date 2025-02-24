@@ -10,8 +10,8 @@ router.route('/create/playlist').post(verifyJWT, createPlaylist);
 router.route('/get/user/playlists').get(verifyJWT, getUserPlaylists);
 
 // Add or remove a video from a playlist
-router.route('/add/:playlistId/:videoId').patch(verifyJWT, addVideoToPlaylist) // Add video to playlist
-router.route('/remove/:playlistId/:videoId').patch(verifyJWT, removeVideoFromPlaylist); // Remove video from playlist
+router.route('/add/:playlistId/:videoId').put(verifyJWT, addVideoToPlaylist) // Add video to playlist
+router.route('/remove/:playlistId/:videoId').delete(verifyJWT, removeVideoFromPlaylist); // Remove video from playlist
 
 // Manage a specific playlist
 router

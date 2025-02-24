@@ -61,10 +61,8 @@ const userSchema = new Schema({
     }],
 
     // playlist Management
-    ownedPlaylists: [{ type: Schema.Types.ObjectId, ref: 'Playlist', default: [] }],
-    savedPlaylists: [{ type: Schema.Types.ObjectId, ref: "Playlist", default: [] }],
-    watchLater: [{ type: Schema.Types.ObjectId, ref: 'Video', default: [] }],
-    likedVideos: [{ type: Schema.Types.ObjectId, ref: 'Video', default: [] }],
+    // savedPlaylists: [{ type: Schema.Types.ObjectId, ref: "Playlist", default: [] }],
+    // watchLater: [{ type: Schema.Types.ObjectId, ref: 'Video', default: [] }],
 
 }, { timestamps: true })
 

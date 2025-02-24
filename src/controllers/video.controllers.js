@@ -71,14 +71,21 @@ const getOwnVideos = asyncHandler(async (req, res) => {
                 localField: "_id",
                 foreignField: "createdBy",
                 as: "videos",
-                pipeline: [{
-                    $addFields: {
-                        likesCount: { $size: "$likes" },
-                        dislikeCounts: { $size: "$dislikes" },
-                        tagsCount: { $size: "$tags" },
-                        sharedCount: { $size: "$shared" },
-                    }
-                }]
+                pipeline: [
+                    {
+                        $lookup: {
+                            from: "likes",
+                            foreignField: "video",
+                            localField: "_id",
+                            as: "likers",
+                        }
+                    },
+                    {
+                        $addFields: {
+                            likeCount: { $size: "$likers" }
+                        }
+                    },
+                ]
             },
         },
         {
@@ -109,11 +116,34 @@ const getOwnVideos = asyncHandler(async (req, res) => {
 const addVideoToHistory = asyncHandler(async (req, res) => {
     const userId = req.user._id;
 
-    const videoId = new mongoose.Types.ObjectId(req.params.videoId);
+    const { videoId } = req.params;
     if (!videoId) {
         throw new apiError(402, "Video is missing")
     }
     console.log(videoId)
+
+    const videoMongooseId = new mongoose.Types.ObjectId(videoId)
+    const existingVideoInsideHistory = await User.aggregate([
+        { $match: { _id: userId } },
+        {
+            $addFields: {
+                isAlreadyAdded: {
+                    $cond: {
+                        if: { $in: [videoMongooseId, "$history"] },
+                        then: true,
+                        else: false
+                    }
+                },
+                historyVideoCount: { $size: "$history" }
+            }
+
+        }
+    ])
+
+    console.log("Video alread exist in the history:", existingVideoInsideHistory[0].isAlreadyAdded)
+    if (existingVideoInsideHistory?.[0]?.isAlreadyAdded) {
+        return res.status(200).json(new apiResponse(200, { existingVideoInsideHistory }, "Video already exist in the history"))
+    }
 
     const watchHistory = await User.findByIdAndUpdate(userId,
         {
@@ -125,10 +155,10 @@ const addVideoToHistory = asyncHandler(async (req, res) => {
     console.log(video)
     console.log(watchHistory)
     if (!watchHistory) {
-        throw new apiError(403, "Error while adding video id in watch history")
+        throw new apiError(404, "Video not found")
     }
 
-    return res.status(201).json(new apiResponse(201, { watchHistory: watchHistory }, "Video successfully added in watch history"))
+    return res.status(201).json(new apiResponse(201, { watchHistory: watchHistory, existingVideoInsideHistory }, "Video successfully added in watch history"))
 
 });
 
@@ -223,7 +253,10 @@ const deleteVideo = asyncHandler(async (req, res) => {
     // const isDeletedOnCloudinary = await deleteOnCloudinary(video.videoUrl)
     const isDeletedOnCloudinary = await deleteVideoOnCloudinary(video.videoUrl)
     const isVideoRemoved = await Video.findByIdAndUpdate(
-        video._id, { $set: { isDelete: true } });
+        video._id,
+        { $set: { isDelete: true, isPublished: false }, },
+        { new: true }
+    );
 
     return res.status(200).json(new apiResponse(200, { isVideoRemoved: isVideoRemoved }, "Video is successfully deleted"))
 })

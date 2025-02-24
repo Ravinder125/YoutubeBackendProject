@@ -34,13 +34,13 @@ import commentRouter from "./routes/commen.routes.js"
 // As we are importing routes we have to use "app.use" middleware
 // Every user router will be handled here
 // URI = http://localhost:4000/api/v1/users/register
-app.use('/api/v1/users', videoRouter)
 app.use('/api/v1/users', userRouter)
-app.use('/api/v1/users', subscriptionRouter)
-app.use('/api/v1/users', playlistRouter)
-app.use('/api/v1/users', likeRouter)
-app.use('/api/v1/users', tweetRouter)
-app.use('/api/v1/users', commentRouter)
+app.use('/api/v1/videos', videoRouter)
+app.use('/api/v1/subscriptions', subscriptionRouter)
+app.use('/api/v1/playlists', playlistRouter)
+app.use('/api/v1/likes', likeRouter)
+app.use('/api/v1/tweets', tweetRouter)
+app.use('/api/v1/comments', commentRouter)
 
 
 
