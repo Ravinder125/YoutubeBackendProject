@@ -27,8 +27,10 @@ const uploadVideo = asyncHandler(async (req, res) => {
 
     const videoCloudinary = await uploadOnCloudinary(videoLocalPath)
     const thumbnailCloudinary = await uploadOnCloudinary(thumbnailLocalPath)
-    await cleanUpFiles([videoLocalPath, thumbnailLocalPath])
     console.log(videoCloudinary)
+
+    await cleanUpFiles([videoLocalPath, thumbnailLocalPath])
+
     if (!videoCloudinary?.url) {
         throw new apiError(500, "Error while uploading video");
     };
@@ -170,7 +172,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
 
     // Create aggregation pipeline
     const videoAggregate = [
-        // { $match: { isDelete: false } }, // only not deleted files
+        // { $match: { isDelete: false } }, // only deleted files
         {
             $lookup: {
                 from: "users",
@@ -283,7 +285,34 @@ const toggleVideoPublish = asyncHandler(async (req, res) => {
 
     return res.status(200).json(new apiResponse(200, { video: video }, "Video's publish status is succesfully updated"))
 
+});
+
+const watchVideo = asyncHandler(async (req, res) => {
+    const userId = req.user?._id;
+    const { videoId } = req.params;
+
+    console.log("videoId:", videoId)
+    
+    if (!userId) throw new apiError(401, "Unauthorized request");
+    if (!videoId) throw new apiError(401, "Video id is missing");
+
+    const videoMongooseId = new mongoose.Types.ObjectId(videoId)
+    const watchVideo = await Video.findByIdAndUpdate(
+        videoMongooseId,
+        {
+            $push: { views: [userId] }
+        },
+        {
+            new: true
+        }
+    )
+    console.log(watchVideo)
+
+    if (!watchVideo) throw new apiError(404, "video not found");
+
+    return res.status(200).json(new apiResponse(200, {watchVideo}, "Video is successfully watched"))
 })
+
 export {
     getVideoById,
     updateVideo,
@@ -292,5 +321,6 @@ export {
     uploadVideo,
     getAllVideos,
     deleteVideo,
-    toggleVideoPublish
+    toggleVideoPublish,
+    watchVideo
 }

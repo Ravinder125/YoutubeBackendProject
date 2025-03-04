@@ -30,6 +30,8 @@ import playlistRouter from "./routes/playlist.routes.js"
 import likeRouter from "./routes/like.routes.js"
 import tweetRouter from "./routes/tweet.routes.js"
 import commentRouter from "./routes/commen.routes.js"
+import healthcheckRouter from "./routes/healthcheck.routes.js"
+import dashboardRouter from "./routes/dashboard.routes.js"
 // Routes declaration
 // As we are importing routes we have to use "app.use" middleware
 // Every user router will be handled here
@@ -41,6 +43,8 @@ app.use('/api/v1/playlists', playlistRouter)
 app.use('/api/v1/likes', likeRouter)
 app.use('/api/v1/tweets', tweetRouter)
 app.use('/api/v1/comments', commentRouter)
+app.use('/api/v1/healthcheck', healthcheckRouter)
+app.use('/api/v1/dashboard',  dashboardRouter)
 
 
 

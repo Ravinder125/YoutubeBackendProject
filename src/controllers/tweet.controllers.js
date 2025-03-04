@@ -63,10 +63,28 @@ const deleteTweet = asyncHandler(async (req, res) => {
 
 })
 
+const getUserTweets = asyncHandler(async(req, res)=>{
+    const userId = req.user._id;
+    const { page = 1, limit = 2 } = req.query
+    if (!userId) throw new apiError(401, "Unauthorized request");
+
+
+    const aggregateQuery = ([
+        { $match: { createdBy: userId, isDelete: false } },
+        { $sort: { createdAt: -1 } }
+    ]) 
+ 
+    const options = { page: parseInt(page), limit: parseInt(limit) }
+    const paginate = await Tweet.aggregatePaginate(Tweet.aggregate(aggregateQuery), options)
+    if (!paginate) throw new apiError(404, "Tweets not found")
+    
+    return res.status(200).json( new apiResponse(200, { paginate }, "Tweets are successfully fetched "))
+}) 
 
 
 export {
     createTweet,
     updateTweet,
-    deleteTweet
+    deleteTweet,
+    getUserTweets
 }

@@ -1,6 +1,8 @@
 import dotenv from "dotenv";
 import connectDB from "./db/db.js"
 import app from "./app.js";
+import mongoose from "mongoose";
+import { User } from "./models/user.models.js";
 
 dotenv.config({
     path: "./.env"
@@ -18,6 +20,21 @@ connectDB()
     .catch((err) => {
         console.log("MONGO db connetion failed", err.message)
     })
+
+
+// import { Video } from "./models/video.models.js";
+// const deleteAllVideos = async () => {
+//   try {
+//     const result = await Video.deleteMany({}); // Deletes all documents in the collection
+//     console.log(`${result.deletedCount} videos deleted successfully.`);
+//   } catch (error) {
+//     console.error("Error deleting videos:", error);
+//   }
+// };
+
+// // Call the function
+// deleteAllVideos();
+
 
 
 

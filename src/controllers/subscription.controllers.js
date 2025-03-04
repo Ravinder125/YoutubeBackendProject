@@ -33,7 +33,7 @@ const toggleSubscription = asyncHandler(async (req, res) => {
     }
 
     console.log(toggle)
-    return res.status(200).json(new apiResponse(200, message))
+    return res.status(200).json(new apiResponse(200, { toggle }, message))
 
 })
 
@@ -53,7 +53,7 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
 });
 
 const getUserChannelSubscribers = asyncHandler(async (req, res) => {
-    const subscriberId = req.params;
+    const {subscriberId} = req.params;
     const userId = req.user._id
 
     const subscribers = await Subscription.aggregate([
