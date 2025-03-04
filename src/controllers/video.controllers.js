@@ -63,57 +63,7 @@ const uploadVideo = asyncHandler(async (req, res) => {
             new apiResponse(200, { Video: video }, "Video is successfully uploaded"))
 });
 
-const getOwnVideos = asyncHandler(async (req, res) => {
-    const userid = req.user._id
-    const videos = await User.aggregate([
-        { $match: { _id: new mongoose.Types.ObjectId(userid) } },
-        {
-            $lookup: {
-                from: "videos",
-                localField: "_id",
-                foreignField: "createdBy",
-                as: "videos",
-                pipeline: [
-                    {
-                        $lookup: {
-                            from: "likes",
-                            foreignField: "video",
-                            localField: "_id",
-                            as: "likers",
-                        }
-                    },
-                    {
-                        $addFields: {
-                            likeCount: { $size: "$likers" }
-                        }
-                    },
-                ]
-            },
-        },
-        {
 
-            $addFields: {
-                videosCount: { $size: "$videos" },
-            }
-        },
-        {
-            $project: {
-                videos: 1,
-                videosCount: 1
-            }
-        }
-    ]);
-
-    console.log(videos)
-    if (!videos) {
-        throw new apiError(401, "You haven't uploaded any video yet")
-    };
-
-    return res.status(200).json(new apiResponse(200, videos, "Videos successfully fetched"))
-
-
-
-});
 
 const addVideoToHistory = asyncHandler(async (req, res) => {
     const userId = req.user._id;
@@ -172,7 +122,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
 
     // Create aggregation pipeline
     const videoAggregate = [
-        // { $match: { isDelete: false } }, // only deleted files
+        { $match: { createdBy: userId,  isDelete: false } }, 
         {
             $lookup: {
                 from: "users",
@@ -187,7 +137,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
     // Pagination options
     const options = { page: parseInt(page), limit: parseInt(limit) };
 
-    // what is paginating it's actually used to devide videos into pages according to pages that's why there's a object called options
+    // what is paginating it's actually used to devide videos into pages and set limit of appearing videos through options object 
     // Paginate using aggregatePaginate
     const paginate = await Video.aggregatePaginate(Video.aggregate(videoAggregate), options)
 
@@ -299,12 +249,8 @@ const watchVideo = asyncHandler(async (req, res) => {
     const videoMongooseId = new mongoose.Types.ObjectId(videoId)
     const watchVideo = await Video.findByIdAndUpdate(
         videoMongooseId,
-        {
-            $push: { views: [userId] }
-        },
-        {
-            new: true
-        }
+        { $push: { views: [userId] } },
+        { new: true }
     )
     console.log(watchVideo)
 
@@ -317,7 +263,6 @@ export {
     getVideoById,
     updateVideo,
     addVideoToHistory,
-    getOwnVideos,
     uploadVideo,
     getAllVideos,
     deleteVideo,

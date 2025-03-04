@@ -4,6 +4,7 @@ import { verifyJWT } from "../middlewares/auth.middlewares.js";
 
 const router = Router();
 
+// Crud operations of Tweets
 router.route('/').post(verifyJWT, createTweet)
 router
     .route('/:tweetId')

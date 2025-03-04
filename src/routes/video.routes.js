@@ -1,36 +1,38 @@
 import { Router } from "express"
 import { verifyJWT } from "../middlewares/auth.middlewares.js"
 import { upload } from "../middlewares/multer.middlewares.js"
-import { getAllVideos, uploadVideo, addVideoToHistory, getOwnVideos, updateVideo, deleteVideo, toggleVideoPublish, watchVideo } from "../controllers/video.controllers.js"
+import { 
+    getAllVideos, 
+    uploadVideo, 
+    updateVideo, 
+    deleteVideo, 
+    toggleVideoPublish, 
+    watchVideo
+} 
+from "../controllers/video.controllers.js"
 
 const router = Router()
 
+// Crud operations on Videos
 router
     .route('/')
     .get(verifyJWT, getAllVideos)
     .post(verifyJWT,
         upload.fields([
-            {
-                name: 'videoFile',
-                maxCount: 1 // how many files with this name we need
-            },
-            {
-                name: 'thumbnail',
-                maxCount: 1 // how many files with this name we need
-
-            }
+            { name: 'videoFile', maxCount: 1 },
+            /* how many files with this name we need */
+            { name: 'thumbnail', maxCount: 1 }
         ]),
         uploadVideo)
 
-router.route('/own/video').get(verifyJWT, getOwnVideos)
 router
-    .route('/video/v/:videoId')
-    .put(verifyJWT, addVideoToHistory)
-    .patch(verifyJWT, upload.single("thumbnail"), updateVideo)
-    .post(verifyJWT, watchVideo)
+    .route('/:videoId')
+    .put(verifyJWT, upload.single("thumbnail"), updateVideo)
+    .patch(verifyJWT, watchVideo)
+    .delete(verifyJWT, deleteVideo)
 
-router.route('/delete/:videoId').delete(verifyJWT, deleteVideo);
-router.route('/toggle/publish-status/:videoId').patch(verifyJWT, toggleVideoPublish)
+// Toggle video publish
+router.route('/toggle/publish/:videoId').patch(verifyJWT, toggleVideoPublish)
 
 
 
